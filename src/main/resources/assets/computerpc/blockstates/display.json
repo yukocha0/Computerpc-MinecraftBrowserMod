@@ -1,0 +1,42 @@
+{
+  "variants": {
+    "facing=north,powered=false": {
+      "model": "computerpc:block/display",
+      "uvlock": true
+    },
+    "facing=east,powered=false": {
+      "model": "computerpc:block/display",
+      "y": 90,
+      "uvlock": true
+    },
+    "facing=south,powered=false": {
+      "model": "computerpc:block/display",
+      "y": 180,
+      "uvlock": true
+    },
+    "facing=west,powered=false": {
+      "model": "computerpc:block/display",
+      "y": 270,
+      "uvlock": true
+    },
+    "facing=north,powered=true": {
+      "model": "computerpc:block/display",
+      "uvlock": true
+    },
+    "facing=east,powered=true": {
+      "model": "computerpc:block/display",
+      "y": 90,
+      "uvlock": true
+    },
+    "facing=south,powered=true": {
+      "model": "computerpc:block/display",
+      "y": 180,
+      "uvlock": true
+    },
+    "facing=west,powered=true": {
+      "model": "computerpc:block/display",
+      "y": 270,
+      "uvlock": true
+    }
+  }
+}
