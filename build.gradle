@@ -1,5 +1,5 @@
 plugins {
-	id 'net.fabricmc.fabric-loom-remap' version "${loom_version}"
+	id 'net.fabricmc.fabric-loom' version "${loom_version}"
 	id 'maven-publish'
 }
 
@@ -16,7 +16,9 @@ repositories {
 	// Loom adds the essential maven repositories to download Minecraft and libraries from automatically.
 	// See https://docs.gradle.org/current/userguide/declaring_repositories.html
 	// for more information about repositories.
-	maven { url = "https://keksuccino.github.io/maven/" }
+	maven {
+		url = uri("https://maven.dimaskama.net/releases")
+	}
 }
 
 loom {
@@ -33,13 +35,22 @@ loom {
 dependencies {
 	// To change the versions see the gradle.properties file
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
-	mappings loom.officialMojangMappings()
-	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
 
-	// Fabric API. This is technically optional, but you probably want it anyway.
-	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
-	modImplementation "de.keksuccino:mcef-fabric:2.2.0-1.21.11"
-	include "de.keksuccino:mcef-fabric:2.2.0-1.21.11"
+	// Depend only on the Fabric modules this mod actually uses.
+	implementation "net.fabricmc.fabric-api:fabric-creative-tab-api-v1:5.0.9+d871b99e6b"
+	implementation "net.fabricmc.fabric-api:fabric-events-interaction-v0:5.1.8+c82f04616b"
+	implementation "net.fabricmc.fabric-api:fabric-lifecycle-events-v1:4.0.4+c82f04616b"
+	implementation "net.fabricmc.fabric-api:fabric-networking-api-v1:6.2.3+d871b99e6b"
+	implementation "net.fabricmc.fabric-api:fabric-object-builder-api-v1:23.0.11+b61fef436b"
+	implementation "net.fabricmc.fabric-api:fabric-rendering-v1:23.0.0+d871b99e6b"
+	runtimeOnly "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+	implementation "me.friwi:jcef-api:jcef-cffac27+cef-143.0.14+gdd46a37+chromium-143.0.7499.193"
+	implementation "me.friwi:jcefmaven:143.0.14"
+	implementation "org.apache.commons:commons-compress:1.27.1"
+	include "me.friwi:jcef-api:jcef-cffac27+cef-143.0.14+gdd46a37+chromium-143.0.7499.193"
+	include "me.friwi:jcefmaven:143.0.14"
+	include "org.apache.commons:commons-compress:1.27.1"
 	
 }
 
@@ -53,7 +64,7 @@ processResources {
 
 tasks.withType(JavaCompile).configureEach {
 	it.options.encoding = "UTF-8"
-	it.options.release = 21
+	it.options.release = 25
 }
 
 java {
@@ -62,8 +73,12 @@ java {
 	// If you remove this line, sources will not be generated.
 	withSourcesJar()
 
-	sourceCompatibility = JavaVersion.VERSION_21
-	targetCompatibility = JavaVersion.VERSION_21
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(25)
+	}
+
+	sourceCompatibility = JavaVersion.VERSION_25
+	targetCompatibility = JavaVersion.VERSION_25
 }
 
 jar {

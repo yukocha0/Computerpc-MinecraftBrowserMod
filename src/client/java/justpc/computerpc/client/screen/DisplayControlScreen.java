@@ -1,18 +1,16 @@
 package justpc.computerpc.client.screen;
 
-import com.cinemamod.mcef.MCEFBrowser;
 import justpc.computerpc.client.BrowserBootstrap;
 import justpc.computerpc.client.DisplayBrowserManager;
 import justpc.computerpc.client.render.BrowserRenderUtil;
 import justpc.computerpc.network.ComputerpcNetworking;
 import justpc.computerpc.network.ComputerpcPayloads;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.minecraft.client.gui.GuiGraphics;
+import net.dimaskama.mcef.api.MCEFBrowser;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.phys.Vec3;
-import org.jetbrains.annotations.Nullable;
+import net.minecraft.util.Mth;
 
 public final class DisplayControlScreen extends Screen {
 	private final net.minecraft.core.BlockPos rootPos;
@@ -58,12 +56,12 @@ public final class DisplayControlScreen extends Screen {
 	}
 
 	@Override
-	public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
 		graphics.fill(0, 0, width, height, 0xFF050505);
 		if (session == null || !BrowserBootstrap.isReady()) {
-			graphics.drawCenteredString(font, BrowserBootstrap.getStatus(), width / 2, height / 2 - 6, 0xD0D0D0);
-			graphics.drawCenteredString(font, Component.literal("Press Esc to exit"), width / 2, height / 2 + 10, 0x909090);
-			super.render(graphics, mouseX, mouseY, partialTick);
+			graphics.centeredText(font, BrowserBootstrap.getStatus(), width / 2, height / 2 - 6, 0xD0D0D0);
+			graphics.centeredText(font, Component.literal("Press Esc to exit"), width / 2, height / 2 + 10, 0x909090);
+			super.extractRenderState(graphics, mouseX, mouseY, partialTick);
 			return;
 		}
 
@@ -72,8 +70,8 @@ public final class DisplayControlScreen extends Screen {
 			BrowserRenderUtil.drawGuiTexture(graphics, browser, 0, 0, width, height);
 		}
 
-		graphics.drawString(font, Component.literal("Esc exits remote control"), 10, 10, 0xFFFFFF, true);
-		super.render(graphics, mouseX, mouseY, partialTick);
+		graphics.text(font, Component.literal("Esc exits remote control"), 10, 10, 0xFFFFFF, true);
+		super.extractRenderState(graphics, mouseX, mouseY, partialTick);
 	}
 
 	@Override
@@ -106,8 +104,8 @@ public final class DisplayControlScreen extends Screen {
 	@Override
 	public boolean charTyped(net.minecraft.client.input.CharacterEvent event) {
 		if (session != null) {
-			session.applyInput(ComputerpcNetworking.EVENT_CHAR_TYPED, 0, 0, 0, 0, 0, event.modifiers(), event.codepoint(), 0);
-			ClientPlayNetworking.send(new ComputerpcPayloads.BrowserInputC2S(rootPos, ComputerpcNetworking.EVENT_CHAR_TYPED, 0, 0, 0, 0, 0, event.modifiers(), event.codepoint(), 0));
+			session.applyInput(ComputerpcNetworking.EVENT_CHAR_TYPED, 0, 0, 0, 0, 0, 0, event.codepoint(), 0);
+			ClientPlayNetworking.send(new ComputerpcPayloads.BrowserInputC2S(rootPos, ComputerpcNetworking.EVENT_CHAR_TYPED, 0, 0, 0, 0, 0, 0, event.codepoint(), 0));
 			return true;
 		}
 
@@ -182,6 +180,10 @@ public final class DisplayControlScreen extends Screen {
 		if (session == null) {
 			return;
 		}
+		MCEFBrowser browser = session.activeBrowser();
+		if (browser == null || browser.getCefBrowser().isLoading()) {
+			return;
+		}
 
 		String currentUrl = session.currentUrl();
 		if (!currentUrl.equals(lastKnownUrl)) {
@@ -191,10 +193,10 @@ public final class DisplayControlScreen extends Screen {
 	}
 
 	private int browserX(double mouseX) {
-		return (int) (mouseX / (double) Math.max(1, width) * session.state().resolutionWidth());
+		return Mth.clamp((int) (mouseX / (double) Math.max(1, width) * session.state().resolutionWidth()), 0, Math.max(0, session.state().resolutionWidth() - 1));
 	}
 
 	private int browserY(double mouseY) {
-		return (int) (mouseY / (double) Math.max(1, height) * session.state().resolutionHeight());
+		return Mth.clamp((int) (mouseY / (double) Math.max(1, height) * session.state().resolutionHeight()), 0, Math.max(0, session.state().resolutionHeight() - 1));
 	}
 }

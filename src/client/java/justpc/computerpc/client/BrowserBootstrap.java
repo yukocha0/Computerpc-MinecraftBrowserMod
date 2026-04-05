@@ -1,70 +1,44 @@
 package justpc.computerpc.client;
 
-import com.cinemamod.mcef.MCEF;
-import com.cinemamod.mcef.MCEFSettings;
+import net.dimaskama.mcef.api.MCEFApi;
 import net.minecraft.client.Minecraft;
-
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.stream.Stream;
 
 public final class BrowserBootstrap {
 	private static volatile String status = "Chromium is starting";
+	private static volatile MCEFApi.Initialization initialization;
 
 	private BrowserBootstrap() {
 	}
 
 	public static void initialize() {
-		configurePersistentSettings();
+		initialization = MCEFApi.initialize();
 		status = "Chromium is starting";
 	}
 
 	public static void tick(Minecraft client) {
-		String nextStatus = MCEF.isInitialized()
-				? "Chromium ready"
-				: "Chromium is initializing or downloading its runtime";
+		MCEFApi.Initialization currentInitialization = initialization;
+		if (currentInitialization == null) {
+			return;
+		}
+
+		String nextStatus = switch (currentInitialization.getStage()) {
+			case DONE -> "Chromium ready";
+			case DOWNLOADING -> "Chromium is downloading its runtime";
+			case EXTRACTING -> "Chromium is extracting its runtime";
+			case INSTALL -> "Chromium is installing its runtime";
+			case INITIALIZING -> "Chromium is initializing";
+			case NOT_STARTED -> "Chromium is starting";
+		};
 		if (!nextStatus.equals(status)) {
 			status = nextStatus;
 		}
 	}
 
 	public static boolean isReady() {
-		return MCEF.isInitialized();
+		return initialization != null && initialization.isDone();
 	}
 
 	public static String getStatus() {
 		return status;
-	}
-
-	private static void configurePersistentSettings() {
-		MCEFSettings settings = MCEF.getSettings();
-		if (!settings.isUsingCache()) {
-			settings.setUseCache(true);
-		}
-
-		boolean runtimeInstalled = hasInstalledRuntime();
-		if (runtimeInstalled && !settings.isSkipDownload()) {
-			settings.setSkipDownload(true);
-		} else if (!runtimeInstalled && settings.isSkipDownload()) {
-			settings.setSkipDownload(false);
-		}
-	}
-
-	private static boolean hasInstalledRuntime() {
-		String jcefPath = System.getProperty("jcef.path");
-		if (jcefPath == null || jcefPath.isBlank()) {
-			return false;
-		}
-
-		Path runtimePath = Path.of(jcefPath);
-		if (!Files.isDirectory(runtimePath)) {
-			return false;
-		}
-
-		try (Stream<Path> files = Files.list(runtimePath)) {
-			return files.findAny().isPresent();
-		} catch (Exception ignored) {
-			return false;
-		}
 	}
 }

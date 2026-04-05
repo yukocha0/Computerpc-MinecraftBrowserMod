@@ -31,6 +31,8 @@ bin/
 # fabric
 
 run/
+refs/
+tools/jdk25/
 
 # java
 

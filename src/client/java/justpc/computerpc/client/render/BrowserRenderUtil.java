@@ -1,12 +1,22 @@
 package justpc.computerpc.client.render;
 
-import com.cinemamod.mcef.MCEFBrowser;
-import net.minecraft.client.gui.GuiGraphics;
+import justpc.computerpc.Computerpc;
+import net.dimaskama.mcef.api.MCEFBrowser;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.IdentityHashMap;
+import java.util.Map;
 
 public final class BrowserRenderUtil {
+	private static final Map<MCEFBrowser, Identifier> REGISTERED_TEXTURES = new IdentityHashMap<>();
+	private static final Map<Identifier, BrowserTextureBridge> TEXTURE_BRIDGES = new IdentityHashMap<>();
+	private static int nextTextureId;
+
 	private BrowserRenderUtil() {
 	}
 
@@ -40,28 +50,66 @@ public final class BrowserRenderUtil {
 		return new AspectBoxF(fittedX, fittedY, fittedWidth, fittedHeight);
 	}
 
-	public static void drawGuiTexture(GuiGraphics graphics, MCEFBrowser browser, int x, int y, int width, int height) {
-		if (browser == null || width <= 0 || height <= 0 || !browser.isTextureReady()) {
+	public static void drawGuiTexture(GuiGraphicsExtractor graphics, MCEFBrowser browser, int x, int y, int width, int height) {
+		if (browser == null || width <= 0 || height <= 0) {
+			return;
+		}
+		if (browser.getTexture() == null) {
 			return;
 		}
 
-		Identifier texture = browser.getTextureIdentifier();
-		if (texture == null) {
+		Identifier textureId = syncWorldTexture(browser);
+		if (textureId == null) {
 			return;
 		}
 
-		graphics.blit(
-				RenderPipelines.GUI_TEXTURED,
-				texture,
-				x,
-				y,
-				0.0f,
-				0.0f,
-				width,
-				height,
-				Math.max(1, width),
-				Math.max(1, height)
-		);
+		int textureWidth = Math.max(1, browser.getTexture().getWidth(0));
+		int textureHeight = Math.max(1, browser.getTexture().getHeight(0));
+		graphics.blit(RenderPipelines.GUI_TEXTURED, textureId, x, y, 0.0f, 0.0f, width, height, textureWidth, textureHeight, textureWidth, textureHeight);
+	}
+
+	public static @Nullable Identifier syncWorldTexture(MCEFBrowser browser) {
+		if (browser == null || browser.getTextureView() == null) {
+			return null;
+		}
+
+		Identifier textureId = REGISTERED_TEXTURES.get(browser);
+		BrowserTextureBridge bridge;
+		if (textureId == null) {
+			textureId = Identifier.fromNamespaceAndPath(Computerpc.MOD_ID, "runtime/browser_" + nextTextureId++);
+			bridge = new BrowserTextureBridge();
+			REGISTERED_TEXTURES.put(browser, textureId);
+			TEXTURE_BRIDGES.put(textureId, bridge);
+			Minecraft.getInstance().getTextureManager().register(textureId, bridge);
+		} else {
+			bridge = TEXTURE_BRIDGES.get(textureId);
+			if (bridge == null) {
+				bridge = new BrowserTextureBridge();
+				TEXTURE_BRIDGES.put(textureId, bridge);
+				Minecraft.getInstance().getTextureManager().register(textureId, bridge);
+			}
+		}
+
+		bridge.update(browser);
+		return textureId;
+	}
+
+	public static void release(MCEFBrowser browser) {
+		Identifier textureId = REGISTERED_TEXTURES.remove(browser);
+		if (textureId == null) {
+			return;
+		}
+
+		TEXTURE_BRIDGES.remove(textureId);
+		Minecraft.getInstance().getTextureManager().release(textureId);
+	}
+
+	public static void releaseAll() {
+		for (Identifier textureId : TEXTURE_BRIDGES.keySet()) {
+			Minecraft.getInstance().getTextureManager().release(textureId);
+		}
+		REGISTERED_TEXTURES.clear();
+		TEXTURE_BRIDGES.clear();
 	}
 
 	public record AspectBox(int x, int y, int width, int height) {

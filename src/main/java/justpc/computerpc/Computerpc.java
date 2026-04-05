@@ -7,10 +7,10 @@ import justpc.computerpc.network.ComputerpcNetworking;
 import justpc.computerpc.registry.ComputerpcBlockEntities;
 import justpc.computerpc.registry.ComputerpcBlocks;
 import justpc.computerpc.registry.ComputerpcItems;
+import net.fabricmc.fabric.api.creativetab.v1.CreativeModeTabEvents;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.player.AttackBlockCallback;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
-import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.core.Direction;
@@ -48,8 +48,8 @@ public final class Computerpc implements ModInitializer {
 	}
 
 	private static void registerItemGroups() {
-		ItemGroupEvents.modifyEntriesEvent(CreativeModeTabs.FUNCTIONAL_BLOCKS).register(entries -> entries.accept(ComputerpcBlocks.DISPLAY_BLOCK));
-		ItemGroupEvents.modifyEntriesEvent(CreativeModeTabs.TOOLS_AND_UTILITIES).register(entries -> entries.accept(ComputerpcItems.REMOTE));
+		CreativeModeTabEvents.modifyOutputEvent(CreativeModeTabs.FUNCTIONAL_BLOCKS).register(output -> output.accept(ComputerpcBlocks.DISPLAY_BLOCK));
+		CreativeModeTabEvents.modifyOutputEvent(CreativeModeTabs.TOOLS_AND_UTILITIES).register(output -> output.accept(ComputerpcItems.REMOTE));
 	}
 
 	private static void registerInteractionHooks() {

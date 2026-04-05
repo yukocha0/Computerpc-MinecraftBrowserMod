@@ -8,14 +8,13 @@ import justpc.computerpc.client.DisplayBrowserManager;
 import justpc.computerpc.util.DisplayCluster;
 import justpc.computerpc.util.DisplayClusterResolver;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
 import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
-import net.minecraft.client.renderer.state.CameraRenderState;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -26,6 +25,7 @@ import org.jetbrains.annotations.Nullable;
 
 public final class DisplayBlockEntityRenderer implements BlockEntityRenderer<DisplayBlockEntity, DisplayBlockEntityRenderer.State> {
 	private static final float SCREEN_OFFSET = 0.0025f;
+	private static final int FULL_BRIGHT = 15728880;
 
 	public DisplayBlockEntityRenderer(BlockEntityRendererProvider.Context context) {
 	}
@@ -45,18 +45,18 @@ public final class DisplayBlockEntityRenderer implements BlockEntityRenderer<Dis
 		DisplayCluster cluster = blockEntity.getCluster();
 		state.facing = facing;
 		state.renderScreen = blockEntity.isPowered();
-		state.light = LightTexture.FULL_BRIGHT;
+		state.light = FULL_BRIGHT;
 
 		if (!state.renderScreen || !(blockEntity.getLevel() instanceof ClientLevel clientLevel)) {
 			return;
 		}
 
 		DisplayBrowserManager.DisplayBrowserSession session = DisplayBrowserManager.getSession(clientLevel, cluster.root());
-		if (session == null || session.activeBrowser() == null || !session.activeBrowser().isTextureReady()) {
+		if (session == null || session.activeBrowser() == null) {
 			return;
 		}
 
-		Identifier texture = session.activeBrowser().getTextureIdentifier();
+		Identifier texture = BrowserRenderUtil.syncWorldTexture(session.activeBrowser());
 		if (texture == null) {
 			return;
 		}
@@ -159,7 +159,7 @@ public final class DisplayBlockEntityRenderer implements BlockEntityRenderer<Dis
 	public static final class State extends BlockEntityRenderState {
 		private Direction facing = Direction.NORTH;
 		private boolean renderScreen;
-		private int light = LightTexture.FULL_BRIGHT;
+		private int light = FULL_BRIGHT;
 		private float uAtMinAxis;
 		private float uAtMaxAxis = 1.0f;
 		private float vAtMinY = 1.0f;
@@ -169,7 +169,7 @@ public final class DisplayBlockEntityRenderer implements BlockEntityRenderer<Dis
 		private void reset() {
 			facing = Direction.NORTH;
 			renderScreen = false;
-			light = LightTexture.FULL_BRIGHT;
+			light = FULL_BRIGHT;
 			uAtMinAxis = 0.0f;
 			uAtMaxAxis = 1.0f;
 			vAtMinY = 1.0f;

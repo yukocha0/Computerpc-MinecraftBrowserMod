@@ -7,6 +7,7 @@ import justpc.computerpc.client.render.DisplayBlockEntityRenderer;
 import justpc.computerpc.client.screen.RemoteBrowserScreen;
 import justpc.computerpc.item.RemoteItem;
 import justpc.computerpc.network.ComputerpcPayloads;
+import net.fabricmc.fabric.api.client.rendering.v1.BlockEntityRendererRegistry;
 import justpc.computerpc.registry.ComputerpcBlockEntities;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -14,7 +15,6 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.event.player.UseItemCallback;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.blockentity.BlockEntityRenderers;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
@@ -23,7 +23,7 @@ public final class ComputerpcClient implements ClientModInitializer {
 	@Override
 	public void onInitializeClient() {
 		BrowserBootstrap.initialize();
-		BlockEntityRenderers.register(ComputerpcBlockEntities.DISPLAY, DisplayBlockEntityRenderer::new);
+		BlockEntityRendererRegistry.register(ComputerpcBlockEntities.DISPLAY, DisplayBlockEntityRenderer::new);
 
 		ClientPlayNetworking.registerGlobalReceiver(ComputerpcPayloads.BrowserInputS2C.TYPE, (payload, context) ->
 				context.client().execute(() -> DisplayBrowserManager.applyRemoteInput(payload)));

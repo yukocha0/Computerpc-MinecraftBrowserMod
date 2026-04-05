@@ -22,10 +22,10 @@ public final class ComputerpcNetworking {
 	}
 
 	public static void register() {
-		PayloadTypeRegistry.playC2S().register(ComputerpcPayloads.DisplayConfigC2S.TYPE, ComputerpcPayloads.DisplayConfigC2S.CODEC);
-		PayloadTypeRegistry.playC2S().register(ComputerpcPayloads.BrowserNavigateC2S.TYPE, ComputerpcPayloads.BrowserNavigateC2S.CODEC);
-		PayloadTypeRegistry.playC2S().register(ComputerpcPayloads.BrowserInputC2S.TYPE, ComputerpcPayloads.BrowserInputC2S.CODEC);
-		PayloadTypeRegistry.playS2C().register(ComputerpcPayloads.BrowserInputS2C.TYPE, ComputerpcPayloads.BrowserInputS2C.CODEC);
+		PayloadTypeRegistry.serverboundPlay().register(ComputerpcPayloads.DisplayConfigC2S.TYPE, ComputerpcPayloads.DisplayConfigC2S.CODEC);
+		PayloadTypeRegistry.serverboundPlay().register(ComputerpcPayloads.BrowserNavigateC2S.TYPE, ComputerpcPayloads.BrowserNavigateC2S.CODEC);
+		PayloadTypeRegistry.serverboundPlay().register(ComputerpcPayloads.BrowserInputC2S.TYPE, ComputerpcPayloads.BrowserInputC2S.CODEC);
+		PayloadTypeRegistry.clientboundPlay().register(ComputerpcPayloads.BrowserInputS2C.TYPE, ComputerpcPayloads.BrowserInputS2C.CODEC);
 
 		ServerPlayNetworking.registerGlobalReceiver(ComputerpcPayloads.DisplayConfigC2S.TYPE, (payload, context) -> {
 			if (!(context.player().level().getBlockEntity(payload.pos()) instanceof DisplayBlockEntity display)) {
