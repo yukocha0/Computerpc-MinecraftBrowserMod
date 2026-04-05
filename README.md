@@ -1,6 +1,6 @@
 # Computer PC
 
-<img width="512" height="512" alt="model" src="https://github.com/user-attachments/assets/bf341f48-f295-4965-a742-0fd346d1c0bc" />
+<img width="256" height="256" alt="Computerpc  256" src="https://github.com/user-attachments/assets/5f0962c2-10f8-4e4a-9cb6-f8e64900c8e6" />
 
 Computer PC adds placeable browser screens to Minecraft Fabric 1.21.11.
 
