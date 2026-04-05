@@ -57,4 +57,4 @@ The first launch can take longer because the embedded browser runtime may need t
 
 ## License
 
-Licensed under `LGPL-2.1-or-later`. See [LICENSE](LICENSE).
+Licensed under `CC0 1.0 Universal`. See [LICENSE](LICENSE).
