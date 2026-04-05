@@ -31,10 +31,16 @@ It is designed for modern builds, control rooms, media setups, and multiplayer b
 
 1. Install **Java 21**.
 2. Install **Fabric Loader** for Minecraft `1.21.11`.
-3. Put **Fabric API** in your `mods` folder.
-4. Download **Computer PC** and place the `.jar` file in your `mods` folder.
-5. For multiplayer, install the mod on the **server and all clients**.
+3. Download and install **Fabric API**.
+4. Download **Computer PC**.
+5. Install the files in the correct `mods` folder:
 6. Launch the game.
+
+### Where To Install It
+
+- **Singleplayer:** put **Fabric API** and **Computer PC** in your client `mods` folder only.
+- **Dedicated server:** put **Fabric API** and **Computer PC** in the server `mods` folder and in every player's client `mods` folder.
+- The same **Computer PC** `.jar` is used on both sides.
 
 ### First Launch Note
 
