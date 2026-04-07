@@ -1,5 +1,7 @@
 # Computer PC
 
+<img width="256" height="256" alt="Computerpc  256" src="https://github.com/user-attachments/assets/5f0962c2-10f8-4e4a-9cb6-f8e64900c8e6" />
+
 Computer PC adds placeable browser screens to Minecraft Fabric 1.21.11.
 
 Build display walls from **Display Blocks**, power them on, and control them with the **Browser Remote**. Each screen uses an embedded Chromium runtime, letting you open real web pages in-game, switch tabs, change resolution, and control media volume from a clean remote interface.
