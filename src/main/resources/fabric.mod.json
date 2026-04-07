@@ -5,12 +5,14 @@
 	"name": "Computer PC",
 	"description": "Placeable multiblock browser displays with an embedded Chromium runtime and a handheld remote for Fabric 1.21.11.",
 	"authors": [
-		"yuko0"
+		"yukocha0"
 	],
 	"contact": {
-		"sources": "https://github.com/yukocha0/Computerpc---Minecraft-fabric-1.21.11-Mod"
+		"homepage": "https://github.com/yukocha0/Computerpc-MinecraftBrowserMod",
+		"issues": "https://github.com/yukocha0/Computerpc-MinecraftBrowserMod/issues",
+		"sources": "https://github.com/yukocha0/Computerpc-MinecraftBrowserMod"
 	},
-	"license": "LGPL-2.1-or-later",
+	"license": "CC0 1.0 Universal",
 	"icon": "assets/computerpc/icon.png",
 	"environment": "*",
 	"entrypoints": {
