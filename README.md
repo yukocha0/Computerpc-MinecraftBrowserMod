@@ -22,6 +22,7 @@ This repository contains the public source for the mod, including the Fabric set
 
 - Minecraft `26.1` wip
 - Fabric Loader `0.18.6+`
+- Fabric Loader `0.18.5+`
 - Fabric API `0.143.12+26.1`
 - Java `25`
 
