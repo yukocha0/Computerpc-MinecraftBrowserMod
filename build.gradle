@@ -17,7 +17,7 @@ repositories {
 	// See https://docs.gradle.org/current/userguide/declaring_repositories.html
 	// for more information about repositories.
 	maven {
-		url = uri("https://maven.dimaskama.net/releases")
+		url = uri("https://api.modrinth.com/maven")
 	}
 }
 
@@ -44,13 +44,9 @@ dependencies {
 	implementation "net.fabricmc.fabric-api:fabric-networking-api-v1:6.2.3+d871b99e6b"
 	implementation "net.fabricmc.fabric-api:fabric-object-builder-api-v1:23.0.11+b61fef436b"
 	implementation "net.fabricmc.fabric-api:fabric-rendering-v1:23.0.0+d871b99e6b"
-	runtimeOnly "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
-	implementation "me.friwi:jcef-api:jcef-cffac27+cef-143.0.14+gdd46a37+chromium-143.0.7499.193"
-	implementation "me.friwi:jcefmaven:143.0.14"
-	implementation "org.apache.commons:commons-compress:1.27.1"
-	include "me.friwi:jcef-api:jcef-cffac27+cef-143.0.14+gdd46a37+chromium-143.0.7499.193"
-	include "me.friwi:jcefmaven:143.0.14"
-	include "org.apache.commons:commons-compress:1.27.1"
+	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+	implementation "maven.modrinth:bQhBuv7x:2.2.0-26.1.1-fabric"
+	include "maven.modrinth:bQhBuv7x:2.2.0-26.1.1-fabric"
 	
 }
 

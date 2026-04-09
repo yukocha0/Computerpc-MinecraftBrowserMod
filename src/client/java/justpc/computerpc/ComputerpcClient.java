@@ -10,6 +10,7 @@ import justpc.computerpc.network.ComputerpcPayloads;
 import net.fabricmc.fabric.api.client.rendering.v1.BlockEntityRendererRegistry;
 import justpc.computerpc.registry.ComputerpcBlockEntities;
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
@@ -53,6 +54,7 @@ public final class ComputerpcClient implements ClientModInitializer {
 			DisplayBrowserManager.tick(client);
 		});
 
+		ClientLifecycleEvents.CLIENT_STOPPING.register(client -> BrowserBootstrap.shutdown());
 		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> DisplayBrowserManager.closeAll());
 	}
 }
