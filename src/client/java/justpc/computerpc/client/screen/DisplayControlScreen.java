@@ -1,12 +1,12 @@
 package justpc.computerpc.client.screen;
 
+import com.cinemamod.mcef.MCEFBrowser;
 import justpc.computerpc.client.BrowserBootstrap;
 import justpc.computerpc.client.DisplayBrowserManager;
 import justpc.computerpc.client.render.BrowserRenderUtil;
 import justpc.computerpc.network.ComputerpcNetworking;
 import justpc.computerpc.network.ComputerpcPayloads;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.dimaskama.mcef.api.MCEFBrowser;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -181,7 +181,7 @@ public final class DisplayControlScreen extends Screen {
 			return;
 		}
 		MCEFBrowser browser = session.activeBrowser();
-		if (browser == null || browser.getCefBrowser().isLoading()) {
+		if (browser == null) {
 			return;
 		}
 

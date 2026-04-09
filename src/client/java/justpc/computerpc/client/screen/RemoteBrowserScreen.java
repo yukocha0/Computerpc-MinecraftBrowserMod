@@ -1,5 +1,6 @@
 package justpc.computerpc.client.screen;
 
+import com.cinemamod.mcef.MCEFBrowser;
 import com.mojang.serialization.DataResult;
 import justpc.computerpc.browser.BrowserTabData;
 import justpc.computerpc.browser.DisplayStateData;
@@ -10,7 +11,6 @@ import justpc.computerpc.client.widget.VolumeSlider;
 import justpc.computerpc.network.ComputerpcNetworking;
 import justpc.computerpc.network.ComputerpcPayloads;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.dimaskama.mcef.api.MCEFBrowser;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
@@ -88,17 +88,15 @@ public final class RemoteBrowserScreen extends Screen {
 		DisplayBrowserManager.NearbyDisplayInfo selected = selectedDisplay();
 		DisplayBrowserManager.DisplayBrowserSession session = activeSession();
 		if (session != null) {
+			String currentUrl = session.currentUrl();
+			if (!currentUrl.equals(workingState.activeTabData().currentUrl())) {
+				workingState = workingState.syncActiveUrl(currentUrl);
+				ClientPlayNetworking.send(new ComputerpcPayloads.BrowserNavigateC2S(selected.rootPos(), currentUrl));
+				requestRebuild();
+			}
+
 			MCEFBrowser browser = session.activeBrowser();
 			if (browser != null) {
-				if (!browser.getCefBrowser().isLoading()) {
-					String currentUrl = session.currentUrl();
-					if (!currentUrl.equals(workingState.activeTabData().currentUrl())) {
-						workingState = workingState.syncActiveUrl(currentUrl);
-						ClientPlayNetworking.send(new ComputerpcPayloads.BrowserNavigateC2S(selected.rootPos(), currentUrl));
-						requestRebuild();
-					}
-				}
-
 				browser.setFocus(browserFocused && urlBox != null && !urlBox.isFocused());
 			}
 		}
@@ -255,7 +253,7 @@ public final class RemoteBrowserScreen extends Screen {
 		if (selected == null) {
 			graphics.centeredText(font, Component.literal("No nearby display screens were found."), width / 2, height / 2 - 14, 0xFFE3E8EF);
 			graphics.centeredText(font, Component.literal("Place and power displays, then press Scan."), width / 2, height / 2 + 4, 0xFF9AA7B8);
-		} else if (browser != null && browser.getTextureView() != null) {
+		} else if (browser != null && browser.isTextureReady()) {
 			BrowserRenderUtil.drawGuiTexture(graphics, browser, browserArea.x(), browserArea.y(), browserArea.width(), browserArea.height());
 		} else {
 			String status = selected.powered() ? BrowserBootstrap.getStatus() : "Display is powered off";
@@ -476,7 +474,7 @@ public final class RemoteBrowserScreen extends Screen {
 	private void navigateBack() {
 		DisplayBrowserManager.DisplayBrowserSession session = activeSession();
 		if (session != null && session.activeBrowser() != null) {
-			session.activeBrowser().getCefBrowser().goBack();
+			session.activeBrowser().goBack();
 			requestRebuild();
 			return;
 		}
@@ -488,7 +486,7 @@ public final class RemoteBrowserScreen extends Screen {
 	private void navigateForward() {
 		DisplayBrowserManager.DisplayBrowserSession session = activeSession();
 		if (session != null && session.activeBrowser() != null) {
-			session.activeBrowser().getCefBrowser().goForward();
+			session.activeBrowser().goForward();
 			requestRebuild();
 			return;
 		}
@@ -500,7 +498,7 @@ public final class RemoteBrowserScreen extends Screen {
 	private void reloadBrowser() {
 		DisplayBrowserManager.DisplayBrowserSession session = activeSession();
 		if (session != null && session.activeBrowser() != null) {
-			session.activeBrowser().getCefBrowser().reload();
+			session.activeBrowser().reload();
 		}
 	}
 
@@ -595,7 +593,7 @@ public final class RemoteBrowserScreen extends Screen {
 			return null;
 		}
 
-		return DisplayBrowserManager.getSession(minecraft.level, selectedDisplay().rootPos());
+		return DisplayBrowserManager.previewState(minecraft.level, selectedDisplay().rootPos(), workingState);
 	}
 
 	private boolean sendBrowserInput(int eventType, int x, int y, int button, int keyCode, int scanCode, int modifiers, int codePoint, double scrollDelta) {
@@ -675,7 +673,7 @@ public final class RemoteBrowserScreen extends Screen {
 	}
 
 	private void renderLoadingBar(GuiGraphicsExtractor graphics, @Nullable MCEFBrowser browser) {
-		if (browser == null || urlBox == null || !browser.getCefBrowser().isLoading()) {
+		if (browser == null || urlBox == null || !browser.isLoading()) {
 			return;
 		}
 
