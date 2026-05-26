@@ -5,7 +5,6 @@ import com.cinemamod.mcef.MCEFBrowser;
 import justpc.computerpc.blockentity.DisplayBlockEntity;
 import justpc.computerpc.browser.DisplayStateData;
 import justpc.computerpc.network.ComputerpcNetworking;
-import justpc.computerpc.network.ComputerpcPayloads;
 import justpc.computerpc.util.DisplayCluster;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -29,8 +28,8 @@ import java.util.Map;
 import java.util.Set;
 
 public final class DisplayBrowserManager {
-	private static final long PREVIEW_SYNC_GRACE_TICKS = 40L;
 	private static final Map<DisplayKey, DisplayBrowserSession> SESSIONS = new HashMap<>();
+	private static final Map<DisplayKey, DisplayStateData> LOCAL_STATES = new HashMap<>();
 	private static boolean loadHandlerRegistered;
 	private static long tickCounter;
 
@@ -57,6 +56,7 @@ public final class DisplayBrowserManager {
 
 			if (!(client.level.getBlockEntity(session.key.rootPos) instanceof DisplayBlockEntity display)) {
 				session.close();
+				LOCAL_STATES.remove(session.key);
 				iterator.remove();
 				continue;
 			}
@@ -77,20 +77,7 @@ public final class DisplayBrowserManager {
 	public static void closeAll() {
 		SESSIONS.values().forEach(DisplayBrowserSession::close);
 		SESSIONS.clear();
-	}
-
-	public static void applyRemoteInput(ComputerpcPayloads.BrowserInputS2C payload) {
-		Minecraft client = Minecraft.getInstance();
-		if (client.level == null) {
-			return;
-		}
-
-		DisplayBrowserSession session = getOrCreateSession(client.level, payload.pos());
-		if (session == null) {
-			return;
-		}
-
-		session.applyInput(payload.eventType(), payload.x(), payload.y(), payload.button(), payload.keyCode(), payload.scanCode(), payload.modifiers(), payload.codePoint(), payload.scrollDelta());
+		LOCAL_STATES.clear();
 	}
 
 	public static @Nullable DisplayBrowserSession getSession(ClientLevel level, BlockPos rootPos) {
@@ -101,7 +88,8 @@ public final class DisplayBrowserManager {
 		DisplayBrowserSession session = getOrCreateSession(level, rootPos);
 		if (session != null) {
 			DisplayStateData adaptedState = adaptStateToCluster(level, rootPos, state);
-			session.syncPreview(adaptedState, tickCounter);
+			LOCAL_STATES.put(session.key, adaptedState);
+			session.sync(adaptedState);
 		}
 		return session;
 	}
@@ -140,7 +128,7 @@ public final class DisplayBrowserManager {
 							cluster.widthBlocks(),
 							cluster.heightBlocks(),
 							rootDisplay.isPowered(),
-							rootDisplay.getScreenState().adaptToAspect(cluster.widthBlocks(), cluster.heightBlocks())
+							localState(level, rootPos, cluster, rootDisplay.getScreenState())
 					));
 				}
 			}
@@ -162,6 +150,7 @@ public final class DisplayBrowserManager {
 			if (staleSession != null) {
 				staleSession.close();
 			}
+			LOCAL_STATES.remove(staleKey);
 			return null;
 		}
 		if (!display.isPowered()) {
@@ -187,7 +176,7 @@ public final class DisplayBrowserManager {
 		session.clusterBlocks = cluster.blocks();
 		session.lastAccessTick = tickCounter;
 		session.resume();
-		session.syncAuthoritative(display.getScreenState().adaptToAspect(cluster.widthBlocks(), cluster.heightBlocks()), tickCounter);
+		session.sync(localState(level, key.rootPos(), cluster, display.getScreenState()));
 		return session;
 	}
 
@@ -213,10 +202,25 @@ public final class DisplayBrowserManager {
 			iterator.remove();
 			session.key = replacementKey;
 			session.clusterBlocks = cluster.blocks();
+			DisplayStateData localState = LOCAL_STATES.remove(existingKey);
+			if (localState != null) {
+				LOCAL_STATES.put(replacementKey, localState.adaptToAspect(cluster.widthBlocks(), cluster.heightBlocks()));
+			}
 			return session;
 		}
 
 		return null;
+	}
+
+	private static DisplayStateData localState(ClientLevel level, BlockPos rootPos, DisplayCluster cluster, DisplayStateData fallback) {
+		DisplayKey key = new DisplayKey(level.dimension(), rootPos);
+		DisplayStateData storedState = LOCAL_STATES.get(key);
+		DisplayStateData adaptedState = (storedState == null ? fallback : storedState)
+				.adaptToAspect(cluster.widthBlocks(), cluster.heightBlocks());
+		if (storedState != null && !adaptedState.equals(storedState)) {
+			LOCAL_STATES.put(key, adaptedState);
+		}
+		return adaptedState;
 	}
 
 	private static void ensureLoadHandlerRegistered() {
@@ -260,8 +264,6 @@ public final class DisplayBrowserManager {
 		private DisplayStateData state = DisplayStateData.DEFAULT;
 		private long lastAccessTick;
 		private Set<BlockPos> clusterBlocks = Set.of();
-		private @Nullable DisplayStateData previewState;
-		private long previewStateUntilTick;
 		private boolean suspended;
 
 		private DisplayBrowserSession(DisplayKey key) {
@@ -305,8 +307,7 @@ public final class DisplayBrowserManager {
 				boolean created = false;
 				boolean urlChanged = false;
 				if (i >= browsers.size()) {
-					browser = MCEF.createBrowser(url, false);
-					browser.useBrowserControls(false);
+					browser = createDisplayBrowser(url);
 					browsers.add(browser);
 					created = true;
 				} else {
@@ -330,28 +331,6 @@ public final class DisplayBrowserManager {
 					suspendBrowser(browser);
 				}
 			}
-		}
-
-		public void syncPreview(DisplayStateData newState, long currentTick) {
-			DisplayStateData sanitized = newState.sanitize();
-			previewState = sanitized;
-			previewStateUntilTick = currentTick + PREVIEW_SYNC_GRACE_TICKS;
-			sync(sanitized);
-		}
-
-		public void syncAuthoritative(DisplayStateData newState, long currentTick) {
-			DisplayStateData sanitized = newState.sanitize();
-			if (previewState != null) {
-				if (sanitized.equals(previewState)) {
-					previewState = null;
-				} else if (currentTick <= previewStateUntilTick) {
-					return;
-				} else {
-					previewState = null;
-				}
-			}
-
-			sync(sanitized);
 		}
 
 		public void close() {
@@ -499,6 +478,14 @@ public final class DisplayBrowserManager {
 					})();
 					""".formatted(normalizedVolume);
 			browser.executeJavaScript(script, browser.getURL(), 0);
+		}
+
+		private static MCEFBrowser createDisplayBrowser(String url) {
+			MCEFBrowser browser = MCEF.createBrowser(url, false);
+			browser.useBrowserControls(false);
+			browser.setCursorChangeListener(cursorId -> {
+			});
+			return browser;
 		}
 
 		private static void suspendBrowser(MCEFBrowser browser) {

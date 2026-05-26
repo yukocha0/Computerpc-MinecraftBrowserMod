@@ -6,12 +6,10 @@ import justpc.computerpc.client.DisplayBrowserManager;
 import justpc.computerpc.client.render.DisplayBlockEntityRenderer;
 import justpc.computerpc.client.screen.RemoteBrowserScreen;
 import justpc.computerpc.item.RemoteItem;
-import justpc.computerpc.network.ComputerpcPayloads;
 import justpc.computerpc.registry.ComputerpcBlockEntities;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.event.player.UseItemCallback;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderers;
@@ -24,9 +22,6 @@ public final class ComputerpcClient implements ClientModInitializer {
 	public void onInitializeClient() {
 		BrowserBootstrap.initialize();
 		BlockEntityRenderers.register(ComputerpcBlockEntities.DISPLAY, DisplayBlockEntityRenderer::new);
-
-		ClientPlayNetworking.registerGlobalReceiver(ComputerpcPayloads.BrowserInputS2C.TYPE, (payload, context) ->
-				context.client().execute(() -> DisplayBrowserManager.applyRemoteInput(payload)));
 
 		UseItemCallback.EVENT.register((player, level, hand) -> {
 			if (!(player.getItemInHand(hand).getItem() instanceof RemoteItem)) {

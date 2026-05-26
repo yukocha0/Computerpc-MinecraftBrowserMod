@@ -1,7 +1,6 @@
 package justpc.computerpc.client.screen;
 
 import com.cinemamod.mcef.MCEFBrowser;
-import com.mojang.serialization.DataResult;
 import justpc.computerpc.browser.BrowserTabData;
 import justpc.computerpc.browser.DisplayStateData;
 import justpc.computerpc.client.BrowserBootstrap;
@@ -9,14 +8,10 @@ import justpc.computerpc.client.DisplayBrowserManager;
 import justpc.computerpc.client.render.BrowserRenderUtil;
 import justpc.computerpc.client.widget.VolumeSlider;
 import justpc.computerpc.network.ComputerpcNetworking;
-import justpc.computerpc.network.ComputerpcPayloads;
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.NbtOps;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.util.Util;
@@ -91,7 +86,7 @@ public final class RemoteBrowserScreen extends Screen {
 			String currentUrl = session.currentUrl();
 			if (!currentUrl.equals(workingState.activeTabData().currentUrl())) {
 				workingState = workingState.syncActiveUrl(currentUrl);
-				ClientPlayNetworking.send(new ComputerpcPayloads.BrowserNavigateC2S(selected.rootPos(), currentUrl));
+				DisplayBrowserManager.previewState(minecraft.level, selected.rootPos(), workingState);
 				requestRebuild();
 			}
 
@@ -520,11 +515,6 @@ public final class RemoteBrowserScreen extends Screen {
 
 		workingState = adaptResolutionToSelectedDisplay(workingState);
 		DisplayBrowserManager.previewState(minecraft.level, selectedDisplay().rootPos(), workingState);
-		DataResult<net.minecraft.nbt.Tag> encoded = DisplayStateData.CODEC.encodeStart(NbtOps.INSTANCE, workingState);
-		encoded.result().ifPresent(tag -> ClientPlayNetworking.send(new ComputerpcPayloads.DisplayConfigC2S(
-				selectedDisplay().rootPos(),
-				(CompoundTag) tag
-		)));
 
 		if (rebuildUi) {
 			requestRebuild();
@@ -604,18 +594,6 @@ public final class RemoteBrowserScreen extends Screen {
 		}
 
 		session.applyInput(eventType, x, y, button, keyCode, scanCode, modifiers, codePoint, scrollDelta);
-		ClientPlayNetworking.send(new ComputerpcPayloads.BrowserInputC2S(
-				selected.rootPos(),
-				eventType,
-				x,
-				y,
-				button,
-				keyCode,
-				scanCode,
-				modifiers,
-				codePoint,
-				scrollDelta
-		));
 		return true;
 	}
 
