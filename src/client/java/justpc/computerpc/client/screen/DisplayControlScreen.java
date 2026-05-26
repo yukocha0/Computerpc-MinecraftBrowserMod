@@ -83,7 +83,6 @@ public final class DisplayControlScreen extends Screen {
 
 		if (session != null) {
 			session.applyInput(ComputerpcNetworking.EVENT_KEY_PRESS, 0, 0, 0, event.key(), (int) event.scancode(), event.modifiers(), 0, 0);
-			ClientPlayNetworking.send(new ComputerpcPayloads.BrowserInputC2S(rootPos, ComputerpcNetworking.EVENT_KEY_PRESS, 0, 0, 0, event.key(), (int) event.scancode(), event.modifiers(), 0, 0));
 			return true;
 		}
 
@@ -94,7 +93,6 @@ public final class DisplayControlScreen extends Screen {
 	public boolean keyReleased(net.minecraft.client.input.KeyEvent event) {
 		if (session != null) {
 			session.applyInput(ComputerpcNetworking.EVENT_KEY_RELEASE, 0, 0, 0, event.key(), (int) event.scancode(), event.modifiers(), 0, 0);
-			ClientPlayNetworking.send(new ComputerpcPayloads.BrowserInputC2S(rootPos, ComputerpcNetworking.EVENT_KEY_RELEASE, 0, 0, 0, event.key(), (int) event.scancode(), event.modifiers(), 0, 0));
 			return true;
 		}
 
@@ -105,7 +103,6 @@ public final class DisplayControlScreen extends Screen {
 	public boolean charTyped(net.minecraft.client.input.CharacterEvent event) {
 		if (session != null) {
 			session.applyInput(ComputerpcNetworking.EVENT_CHAR_TYPED, 0, 0, 0, 0, 0, 0, event.codepoint(), 0);
-			ClientPlayNetworking.send(new ComputerpcPayloads.BrowserInputC2S(rootPos, ComputerpcNetworking.EVENT_CHAR_TYPED, 0, 0, 0, 0, 0, 0, event.codepoint(), 0));
 			return true;
 		}
 
@@ -118,7 +115,6 @@ public final class DisplayControlScreen extends Screen {
 			int x = browserX(event.x());
 			int y = browserY(event.y());
 			session.applyInput(ComputerpcNetworking.EVENT_MOUSE_PRESS, x, y, event.button(), 0, 0, 0, 0, 0);
-			ClientPlayNetworking.send(new ComputerpcPayloads.BrowserInputC2S(rootPos, ComputerpcNetworking.EVENT_MOUSE_PRESS, x, y, event.button(), 0, 0, 0, 0, 0));
 			return true;
 		}
 
@@ -131,7 +127,6 @@ public final class DisplayControlScreen extends Screen {
 			int x = browserX(event.x());
 			int y = browserY(event.y());
 			session.applyInput(ComputerpcNetworking.EVENT_MOUSE_RELEASE, x, y, event.button(), 0, 0, 0, 0, 0);
-			ClientPlayNetworking.send(new ComputerpcPayloads.BrowserInputC2S(rootPos, ComputerpcNetworking.EVENT_MOUSE_RELEASE, x, y, event.button(), 0, 0, 0, 0, 0));
 			return true;
 		}
 
@@ -144,7 +139,6 @@ public final class DisplayControlScreen extends Screen {
 			int x = browserX(event.x());
 			int y = browserY(event.y());
 			session.applyInput(ComputerpcNetworking.EVENT_MOUSE_MOVE, x, y, event.button(), 0, 0, 0, 0, 0);
-			ClientPlayNetworking.send(new ComputerpcPayloads.BrowserInputC2S(rootPos, ComputerpcNetworking.EVENT_MOUSE_MOVE, x, y, event.button(), 0, 0, 0, 0, 0));
 			return true;
 		}
 
@@ -157,7 +151,6 @@ public final class DisplayControlScreen extends Screen {
 			int x = browserX(mouseX);
 			int y = browserY(mouseY);
 			session.applyInput(ComputerpcNetworking.EVENT_MOUSE_MOVE, x, y, 0, 0, 0, 0, 0, 0);
-			ClientPlayNetworking.send(new ComputerpcPayloads.BrowserInputC2S(rootPos, ComputerpcNetworking.EVENT_MOUSE_MOVE, x, y, 0, 0, 0, 0, 0, 0));
 		}
 
 		super.mouseMoved(mouseX, mouseY);
@@ -169,7 +162,6 @@ public final class DisplayControlScreen extends Screen {
 			int x = browserX(mouseX);
 			int y = browserY(mouseY);
 			session.applyInput(ComputerpcNetworking.EVENT_MOUSE_SCROLL, x, y, 0, 0, 0, 0, 0, verticalAmount);
-			ClientPlayNetworking.send(new ComputerpcPayloads.BrowserInputC2S(rootPos, ComputerpcNetworking.EVENT_MOUSE_SCROLL, x, y, 0, 0, 0, 0, 0, verticalAmount));
 			return true;
 		}
 

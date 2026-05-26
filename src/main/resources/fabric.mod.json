@@ -12,7 +12,7 @@
 		"issues": "https://github.com/yukocha0/Computerpc-MinecraftBrowserMod/issues",
 		"sources": "https://github.com/yukocha0/Computerpc-MinecraftBrowserMod"
 	},
-	"license": "CC0 1.0 Universal",
+	"license": "LGPL-2.1-or-later",
 	"icon": "assets/computerpc/icon.png",
 	"environment": "*",
 	"entrypoints": {

@@ -604,18 +604,6 @@ public final class RemoteBrowserScreen extends Screen {
 		}
 
 		session.applyInput(eventType, x, y, button, keyCode, scanCode, modifiers, codePoint, scrollDelta);
-		ClientPlayNetworking.send(new ComputerpcPayloads.BrowserInputC2S(
-				selected.rootPos(),
-				eventType,
-				x,
-				y,
-				button,
-				keyCode,
-				scanCode,
-				modifiers,
-				codePoint,
-				scrollDelta
-		));
 		return true;
 	}
 

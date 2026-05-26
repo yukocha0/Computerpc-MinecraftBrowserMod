@@ -2,12 +2,14 @@ package justpc.computerpc.client;
 
 import com.cinemamod.mcef.MCEF;
 import com.cinemamod.mcef.MCEFBrowser;
+import com.cinemamod.mcef.listeners.MCEFCursorChangeListener;
 import justpc.computerpc.blockentity.DisplayBlockEntity;
 import justpc.computerpc.browser.BrowserTabData;
 import justpc.computerpc.browser.DisplayStateData;
 import justpc.computerpc.client.render.BrowserRenderUtil;
+import justpc.computerpc.client.screen.DisplayControlScreen;
+import justpc.computerpc.client.screen.RemoteBrowserScreen;
 import justpc.computerpc.network.ComputerpcNetworking;
-import justpc.computerpc.network.ComputerpcPayloads;
 import justpc.computerpc.util.DisplayCluster;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -84,20 +86,6 @@ public final class DisplayBrowserManager {
 	public static void closeAll() {
 		SESSIONS.values().forEach(DisplayBrowserSession::close);
 		SESSIONS.clear();
-	}
-
-	public static void applyRemoteInput(ComputerpcPayloads.BrowserInputS2C payload) {
-		Minecraft client = Minecraft.getInstance();
-		if (client.level == null) {
-			return;
-		}
-
-		DisplayBrowserSession session = getOrCreateSession(client.level, payload.pos());
-		if (session == null) {
-			return;
-		}
-
-		session.applyInput(payload.eventType(), payload.x(), payload.y(), payload.button(), payload.keyCode(), payload.scanCode(), payload.modifiers(), payload.codePoint(), payload.scrollDelta());
 	}
 
 	public static @Nullable DisplayBrowserSession getSession(ClientLevel level, BlockPos rootPos) {
@@ -342,6 +330,7 @@ public final class DisplayBrowserManager {
 				if (i >= browsers.size()) {
 					browser = MCEF.createBrowser(url, false);
 					browser.useBrowserControls(false);
+					confineCursorChangesToBrowserScreens(browser);
 					browsers.add(browser);
 					created = true;
 				} else {
@@ -571,6 +560,16 @@ public final class DisplayBrowserManager {
 					  }
 					})();
 					""", url == null ? "about:blank" : url, 0);
+		}
+
+		private static void confineCursorChangesToBrowserScreens(MCEFBrowser browser) {
+			MCEFCursorChangeListener defaultCursorListener = browser.getCursorChangeListener();
+			browser.setCursorChangeListener(cursorID -> {
+				if (Minecraft.getInstance().screen instanceof RemoteBrowserScreen
+						|| Minecraft.getInstance().screen instanceof DisplayControlScreen) {
+					defaultCursorListener.onCursorChange(cursorID);
+				}
+			});
 		}
 	}
 
