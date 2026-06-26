@@ -8,10 +8,12 @@ import justpc.computerpc.client.DisplayBrowserManager;
 import justpc.computerpc.client.render.BrowserRenderUtil;
 import justpc.computerpc.client.widget.VolumeSlider;
 import justpc.computerpc.network.ComputerpcNetworking;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.util.Util;
@@ -87,6 +89,7 @@ public final class RemoteBrowserScreen extends Screen {
 			if (!currentUrl.equals(workingState.activeTabData().currentUrl())) {
 				workingState = workingState.syncActiveUrl(currentUrl);
 				DisplayBrowserManager.previewState(minecraft.level, selected.rootPos(), workingState);
+				sendBrowserNavigation(selected.rootPos(), currentUrl);
 				requestRebuild();
 			}
 
@@ -515,10 +518,28 @@ public final class RemoteBrowserScreen extends Screen {
 
 		workingState = adaptResolutionToSelectedDisplay(workingState);
 		DisplayBrowserManager.previewState(minecraft.level, selectedDisplay().rootPos(), workingState);
+		sendDisplayConfig(workingState);
 
 		if (rebuildUi) {
 			requestRebuild();
 		}
+	}
+
+	private void sendDisplayConfig(DisplayStateData state) {
+		DisplayBrowserManager.NearbyDisplayInfo selected = selectedDisplay();
+		if (selected == null || !ClientPlayNetworking.canSend(ComputerpcNetworking.DisplayConfigC2S.TYPE)) {
+			return;
+		}
+
+		ClientPlayNetworking.send(new ComputerpcNetworking.DisplayConfigC2S(selected.rootPos(), state));
+	}
+
+	private void sendBrowserNavigation(BlockPos rootPos, String url) {
+		if (!ClientPlayNetworking.canSend(ComputerpcNetworking.BrowserNavigateC2S.TYPE)) {
+			return;
+		}
+
+		ClientPlayNetworking.send(new ComputerpcNetworking.BrowserNavigateC2S(rootPos, url));
 	}
 
 	private void requestRebuild() {

@@ -5,6 +5,7 @@ import justpc.computerpc.client.BrowserBootstrap;
 import justpc.computerpc.client.DisplayBrowserManager;
 import justpc.computerpc.client.render.BrowserRenderUtil;
 import justpc.computerpc.network.ComputerpcNetworking;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -178,6 +179,9 @@ public final class DisplayControlScreen extends Screen {
 			lastKnownUrl = currentUrl;
 			if (minecraft.level != null) {
 				DisplayBrowserManager.previewState(minecraft.level, rootPos, session.state().syncActiveUrl(currentUrl));
+			}
+			if (ClientPlayNetworking.canSend(ComputerpcNetworking.BrowserNavigateC2S.TYPE)) {
+				ClientPlayNetworking.send(new ComputerpcNetworking.BrowserNavigateC2S(rootPos, currentUrl));
 			}
 		}
 	}

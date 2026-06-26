@@ -30,6 +30,7 @@ import java.util.Set;
 public final class DisplayBrowserManager {
 	private static final Map<DisplayKey, DisplayBrowserSession> SESSIONS = new HashMap<>();
 	private static final Map<DisplayKey, DisplayStateData> LOCAL_STATES = new HashMap<>();
+	private static final Map<DisplayKey, DisplayStateData> AUTHORITATIVE_STATES = new HashMap<>();
 	private static boolean loadHandlerRegistered;
 	private static long tickCounter;
 
@@ -50,6 +51,8 @@ public final class DisplayBrowserManager {
 			DisplayBrowserSession session = entry.getValue();
 			if (!session.key.dimension.equals(client.level.dimension())) {
 				session.close();
+				LOCAL_STATES.remove(session.key);
+				AUTHORITATIVE_STATES.remove(session.key);
 				iterator.remove();
 				continue;
 			}
@@ -78,6 +81,7 @@ public final class DisplayBrowserManager {
 		SESSIONS.values().forEach(DisplayBrowserSession::close);
 		SESSIONS.clear();
 		LOCAL_STATES.clear();
+		AUTHORITATIVE_STATES.clear();
 	}
 
 	public static @Nullable DisplayBrowserSession getSession(ClientLevel level, BlockPos rootPos) {
@@ -151,6 +155,7 @@ public final class DisplayBrowserManager {
 				staleSession.close();
 			}
 			LOCAL_STATES.remove(staleKey);
+			AUTHORITATIVE_STATES.remove(staleKey);
 			return null;
 		}
 		if (!display.isPowered()) {
@@ -176,7 +181,7 @@ public final class DisplayBrowserManager {
 		session.clusterBlocks = cluster.blocks();
 		session.lastAccessTick = tickCounter;
 		session.resume();
-		session.sync(localState(level, key.rootPos(), cluster, display.getScreenState()));
+		session.syncAuthoritative(localState(level, key.rootPos(), cluster, display.getScreenState()));
 		return session;
 	}
 
@@ -206,6 +211,10 @@ public final class DisplayBrowserManager {
 			if (localState != null) {
 				LOCAL_STATES.put(replacementKey, localState.adaptToAspect(cluster.widthBlocks(), cluster.heightBlocks()));
 			}
+			DisplayStateData authoritativeState = AUTHORITATIVE_STATES.remove(existingKey);
+			if (authoritativeState != null) {
+				AUTHORITATIVE_STATES.put(replacementKey, authoritativeState.adaptToAspect(cluster.widthBlocks(), cluster.heightBlocks()));
+			}
 			return session;
 		}
 
@@ -214,10 +223,23 @@ public final class DisplayBrowserManager {
 
 	private static DisplayStateData localState(ClientLevel level, BlockPos rootPos, DisplayCluster cluster, DisplayStateData fallback) {
 		DisplayKey key = new DisplayKey(level.dimension(), rootPos);
+		DisplayStateData authoritativeState = fallback.adaptToAspect(cluster.widthBlocks(), cluster.heightBlocks());
+		DisplayStateData previousAuthoritative = AUTHORITATIVE_STATES.put(key, authoritativeState);
 		DisplayStateData storedState = LOCAL_STATES.get(key);
-		DisplayStateData adaptedState = (storedState == null ? fallback : storedState)
-				.adaptToAspect(cluster.widthBlocks(), cluster.heightBlocks());
-		if (storedState != null && !adaptedState.equals(storedState)) {
+		if (storedState == null) {
+			return authoritativeState;
+		}
+
+		DisplayStateData adaptedState = storedState.adaptToAspect(cluster.widthBlocks(), cluster.heightBlocks());
+		if (adaptedState.equals(authoritativeState)) {
+			LOCAL_STATES.remove(key);
+			return authoritativeState;
+		}
+		if (previousAuthoritative != null && !previousAuthoritative.equals(authoritativeState)) {
+			LOCAL_STATES.remove(key);
+			return authoritativeState;
+		}
+		if (!adaptedState.equals(storedState)) {
 			LOCAL_STATES.put(key, adaptedState);
 		}
 		return adaptedState;
@@ -331,6 +353,10 @@ public final class DisplayBrowserManager {
 					suspendBrowser(browser);
 				}
 			}
+		}
+
+		public void syncAuthoritative(DisplayStateData newState) {
+			sync(newState);
 		}
 
 		public void close() {
