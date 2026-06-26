@@ -1,6 +1,8 @@
-# Computer PC
+# Computerpc
 
-Computer PC adds placeable browser screens to Minecraft Fabric 1.21.11.
+<img width="256" height="256" alt="Computerpc  256" src="https://github.com/user-attachments/assets/5f0962c2-10f8-4e4a-9cb6-f8e64900c8e6" />
+
+Computerpc adds placeable browser screens to Minecraft Fabric 1.21.11+.
 
 Build display walls from **Display Blocks**, power them on, and control them with the **Browser Remote**. Each screen uses an embedded Chromium runtime, letting you open real web pages in-game, switch tabs, change resolution, and control media volume from a clean remote interface.
 
@@ -17,24 +19,22 @@ It is designed for modern builds, control rooms, media setups, and multiplayer b
 - Per-screen media volume control
 - Cluster-wide power toggle
 - Saved screen state, including tabs and settings
-- Multiplayer-friendly syncing so other nearby players see the same display activity
+- Multiplayer-friendly syncing so other nearby players see the same display activity (url sync)
 - Automatic browser runtime initialization on startup
 
 ## Requirements
 
-- Minecraft `1.21.11`
+- Minecraft `1.21.11+`
 - Fabric Loader `0.18.5+`
 - Fabric API
-- Java `21`
 
 ## Installation
 
-1. Install **Java 21**.
-2. Install **Fabric Loader** for Minecraft `1.21.11`.
-3. Download and install **Fabric API**.
-4. Download **Computer PC**.
-5. Install the files in the correct `mods` folder:
-6. Launch the game.
+1. Install **Fabric Loader** for Minecraft `1.21.11+`.
+2. Download and install **Fabric API**.
+3. Download **Computer PC**.
+4. Install the files in the correct `mods` folder:
+5. Launch the game.
 
 ### Where To Install It
 
@@ -61,3 +61,16 @@ On first startup, the embedded Chromium runtime may need a moment to initialize 
 - The remote scans for displays near the player.
 - Display clusters share the same screen state, so larger setups behave like one screen wall.
 - If Chromium is still starting, the display will begin rendering once the runtime is ready.
+- In multiplayer the url gets synced with other players. Its not a screen share or streaming.
+
+## License & Attribution
+
+**ComputerPC** is released into the Public Domain under the **CC0 1.0 Universal License**. You are absolutely free to view, use, modify, and distribute the code of this mod without needing permission.
+
+### MCEF (Third-Party Library)
+To function, this mod dynamically downloads and links to **MCEF [Keksuccino's Fork]** at runtime. MCEF is an independent third-party library and is **NOT** under the CC0 license.
+
+In compliance with its licensing, please note the following:
+* **License:** MCEF is licensed under the **GNU Lesser General Public License v2.1 (LGPL-2.1)**.
+* **Credits:** MCEF [Keksuccino's Fork] is maintained by **Keksuccino** https://modrinth.com/mod/mcef-keksuccino . It is a fork of the original MCEF created by **montoyo**, **ds58**, and the **CinemaMod Group**. All rights and credits for MCEF belong to these respective developers.
+* **Source Code:** You can find the open-source code for MCEF [Keksuccino's Fork] here: [https://github.com/Keksuccino/mcef](https://github.com/Keksuccino/mcef)
