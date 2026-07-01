@@ -67,10 +67,19 @@ On first startup, the embedded Chromium runtime may need a moment to initialize 
 
 **ComputerPC** is released into the Public Domain under the **CC0 1.0 Universal License**. You are absolutely free to view, use, modify, and distribute the code of this mod without needing permission.
 
-### MCEF (Third-Party Library)
-To function, this mod dynamically downloads and links to **MCEF [Keksuccino's Fork]** at runtime. MCEF is an independent third-party library and is **NOT** under the CC0 license.
+### MCEF & JCEF (Third-Party Libraries)
 
-In compliance with its licensing, please note the following:
-* **License:** MCEF is licensed under the **GNU Lesser General Public License v2.1 (LGPL-2.1)**.
-* **Credits:** MCEF [Keksuccino's Fork] is maintained by **Keksuccino** https://modrinth.com/mod/mcef-keksuccino . It is a fork of the original MCEF created by **montoyo**, **ds58**, and the **CinemaMod Group**. All rights and credits for MCEF belong to these respective developers.
-* **Source Code:** You can find the open-source code for MCEF [Keksuccino's Fork] here: [https://github.com/Keksuccino/mcef](https://github.com/Keksuccino/mcef)
+Depending on the version of the mod you are playing, it dynamically handles different browser framework libraries at runtime. These independent third-party libraries are NOT covered under the CC0 license.
+
+In compliance with their licensing, please note the following:
+
+For Version 1.21.11:
+This version dynamically downloads and links to MCEF [Keksuccino's Fork].
+License: LGPL-2.1 (GNU Lesser General Public License v2.1).
+Credits: Maintained by Keksuccino [(Modrinth Page)](https://modrinth.com/mod/mcef-keksuccino). It is a fork of the original MCEF created by montoyo, ds58, and the CinemaMod Group. All rights and credits belong to their respective developers.
+Source Code: Available on GitHub at [Keksuccino/mcef](https://github.com/Keksuccino/mcef).
+
+For Newer / Latest Versions:
+All subsequent versions no longer rely on external MCEF forks. Instead, they handle JCEF (Java Chromium Embedded Framework) through the mod's own automated runtime workaround and downloading system to ensure seamless compatibility.
+
+License: JCEF and Chromium are distributed under their respective open-source licenses (such as the BSD 3-Clause License).
