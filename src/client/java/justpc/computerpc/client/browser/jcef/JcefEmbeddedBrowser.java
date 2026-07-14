@@ -1,16 +1,13 @@
-package net.dimaskama.mcef.impl;
+package justpc.computerpc.client.browser.jcef;
 
-import com.mojang.blaze3d.opengl.GlConst;
-import com.mojang.blaze3d.opengl.GlStateManager;
-import com.mojang.blaze3d.opengl.GlTexture;
+import justpc.computerpc.browser.api.BrowserCursor;
+import justpc.computerpc.browser.api.BrowserFrame;
+import justpc.computerpc.browser.api.BrowserInput;
+import justpc.computerpc.browser.api.BrowserInstance;
+import justpc.computerpc.browser.api.BrowserRenderer;
+import justpc.computerpc.browser.api.BrowserTexture;
 import com.mojang.blaze3d.platform.cursor.CursorType;
 import com.mojang.blaze3d.platform.cursor.CursorTypes;
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.textures.GpuTexture;
-import com.mojang.blaze3d.textures.GpuTextureView;
-import com.mojang.blaze3d.textures.TextureFormat;
-import net.dimaskama.mcef.api.MCEFBrowser;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -18,11 +15,9 @@ import org.cef.CefBrowserSettings;
 import org.cef.CefClient;
 import org.cef.browser.CefBrowser;
 import org.cef.browser.CefRequestContext;
-import org.cef.browser.CustomCefBrowserOsr;
+import org.cef.browser.ComputerPcCefBrowser;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
-import org.lwjgl.opengl.GL12;
-import org.lwjgl.system.MemoryUtil;
 
 import java.awt.Component;
 import java.awt.Cursor;
@@ -32,36 +27,39 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
 import java.nio.ByteBuffer;
 
-public final class MCEFBrowserImpl extends CustomCefBrowserOsr implements MCEFBrowser {
-	@Nullable
-	private GpuTexture gpuTexture;
-	@Nullable
-	private GpuTextureView gpuTextureView;
+public final class JcefEmbeddedBrowser extends ComputerPcCefBrowser implements BrowserInstance, BrowserInput, BrowserRenderer {
+	private final JcefBrowserSurface surface = new SoftwarePaintTextureSurface("ComputerPcBrowser");
 	private int lastPressedMouseButton = MouseEvent.NOBUTTON;
 	private boolean lastMouseEntered;
+	private int lastMouseX = Integer.MIN_VALUE;
+	private int lastMouseY = Integer.MIN_VALUE;
+	private boolean lastMouseDragging;
 	private int cursorType = Cursor.DEFAULT_CURSOR;
-	private final Object paintLock = new Object();
-	private @Nullable ByteBuffer pendingPaintBuffer;
-	private int pendingPaintCapacity;
-	private int pendingPaintBytes;
-	private int pendingPaintWidth;
-	private int pendingPaintHeight;
-	private @Nullable ByteBuffer uploadPaintBuffer;
-	private int uploadPaintCapacity;
-	private boolean pendingPaintReady;
-	private boolean paintUploadScheduled;
 
-	public MCEFBrowserImpl(CefClient client, String url, boolean transparent, CefRequestContext context) {
+	public JcefEmbeddedBrowser(CefClient client, String url, boolean transparent, CefRequestContext context) {
 		super(client, url, transparent, context, (CefBrowserSettings) null);
 	}
 
 	@Override
+	public BrowserRenderer renderer() {
+		return this;
+	}
+
+	@Override
+	public BrowserInput input() {
+		return this;
+	}
+
+	@Override
 	public void resize(int width, int height) {
+		if (browserRect.width == width && browserRect.height == height) {
+			return;
+		}
+
 		browserRect.setBounds(0, 0, width, height);
 		wasResized(width, height);
 	}
 
-	@Override
 	public void onMouseClicked(MouseButtonEvent event, boolean doubled) {
 		int btn = toAwtMouseButton(event.button());
 		lastPressedMouseButton = btn;
@@ -78,7 +76,6 @@ public final class MCEFBrowserImpl extends CustomCefBrowserOsr implements MCEFBr
 		));
 	}
 
-	@Override
 	public void onMouseReleased(MouseButtonEvent event) {
 		int btn = toAwtMouseButton(event.button());
 		if (btn == lastPressedMouseButton) {
@@ -98,7 +95,6 @@ public final class MCEFBrowserImpl extends CustomCefBrowserOsr implements MCEFBr
 		));
 	}
 
-	@Override
 	public void onMouseScrolled(int x, int y, double amount) {
 		sendMouseWheelEvent(new MouseWheelEvent(
 				component,
@@ -115,9 +111,16 @@ public final class MCEFBrowserImpl extends CustomCefBrowserOsr implements MCEFBr
 		));
 	}
 
-	@Override
 	public void onMouseMoved(int x, int y) {
 		boolean mouseEntered = browserRect.contains(x, y);
+		boolean dragging = lastPressedMouseButton != MouseEvent.NOBUTTON;
+		if (x == lastMouseX && y == lastMouseY && dragging == lastMouseDragging && mouseEntered == lastMouseEntered) {
+			return;
+		}
+
+		lastMouseX = x;
+		lastMouseY = y;
+		lastMouseDragging = dragging;
 		if (mouseEntered != lastMouseEntered) {
 			lastMouseEntered = mouseEntered;
 			sendMouseEvent(new MouseEvent(
@@ -133,7 +136,6 @@ public final class MCEFBrowserImpl extends CustomCefBrowserOsr implements MCEFBr
 			));
 		}
 
-		boolean dragging = lastPressedMouseButton != MouseEvent.NOBUTTON;
 		sendMouseEvent(new MouseEvent(
 				component,
 				dragging ? MouseEvent.MOUSE_DRAGGED : MouseEvent.MOUSE_MOVED,
@@ -147,7 +149,6 @@ public final class MCEFBrowserImpl extends CustomCefBrowserOsr implements MCEFBr
 		));
 	}
 
-	@Override
 	public void onKeyPressed(KeyEvent event) {
 		int key = toAwtKeyCode(event.key());
 		sendKeyEvent(new java.awt.event.KeyEvent(
@@ -160,7 +161,6 @@ public final class MCEFBrowserImpl extends CustomCefBrowserOsr implements MCEFBr
 		));
 	}
 
-	@Override
 	public void onKeyReleased(KeyEvent event) {
 		int key = toAwtKeyCode(event.key());
 		sendKeyEvent(new java.awt.event.KeyEvent(
@@ -173,7 +173,6 @@ public final class MCEFBrowserImpl extends CustomCefBrowserOsr implements MCEFBr
 		));
 	}
 
-	@Override
 	public void onCharTyped(CharacterEvent event) {
 		sendKeyEvent(new java.awt.event.KeyEvent(
 				component,
@@ -186,177 +185,116 @@ public final class MCEFBrowserImpl extends CustomCefBrowserOsr implements MCEFBr
 	}
 
 	@Override
-	public @Nullable GpuTexture getTexture() {
-		return gpuTexture;
+	public @Nullable BrowserTexture texture() {
+		return surface.texture();
 	}
 
 	@Override
-	public @Nullable GpuTextureView getTextureView() {
-		return gpuTextureView;
+	public @Nullable BrowserFrame latestFrame() {
+		return surface.latestFrame();
 	}
 
-	@Override
 	public CursorType getCursorType() {
-		return switch (cursorType) {
-			case Cursor.CROSSHAIR_CURSOR -> CursorTypes.CROSSHAIR;
-			case Cursor.TEXT_CURSOR -> CursorTypes.IBEAM;
-			case Cursor.SW_RESIZE_CURSOR, Cursor.NE_RESIZE_CURSOR -> ExtraCursorTypes.RESIZE_NESW;
-			case Cursor.SE_RESIZE_CURSOR, Cursor.NW_RESIZE_CURSOR -> ExtraCursorTypes.RESIZE_NWSE;
-			case Cursor.N_RESIZE_CURSOR, Cursor.S_RESIZE_CURSOR -> CursorTypes.RESIZE_NS;
-			case Cursor.W_RESIZE_CURSOR, Cursor.E_RESIZE_CURSOR -> CursorTypes.RESIZE_EW;
-			case Cursor.HAND_CURSOR -> CursorTypes.POINTING_HAND;
-			case Cursor.MOVE_CURSOR -> CursorTypes.RESIZE_ALL;
+		return switch (cursor()) {
+			case CROSSHAIR -> CursorTypes.CROSSHAIR;
+			case IBEAM -> CursorTypes.IBEAM;
+			case RESIZE_NESW -> BrowserCursorTypes.RESIZE_NESW;
+			case RESIZE_NWSE -> BrowserCursorTypes.RESIZE_NWSE;
+			case RESIZE_NS -> CursorTypes.RESIZE_NS;
+			case RESIZE_EW -> CursorTypes.RESIZE_EW;
+			case POINTING_HAND -> CursorTypes.POINTING_HAND;
+			case RESIZE_ALL -> CursorTypes.RESIZE_ALL;
 			default -> CursorTypes.ARROW;
 		};
 	}
 
 	@Override
+	public BrowserCursor cursor() {
+		return switch (cursorType) {
+			case Cursor.CROSSHAIR_CURSOR -> BrowserCursor.CROSSHAIR;
+			case Cursor.TEXT_CURSOR -> BrowserCursor.IBEAM;
+			case Cursor.SW_RESIZE_CURSOR, Cursor.NE_RESIZE_CURSOR -> BrowserCursor.RESIZE_NESW;
+			case Cursor.SE_RESIZE_CURSOR, Cursor.NW_RESIZE_CURSOR -> BrowserCursor.RESIZE_NWSE;
+			case Cursor.N_RESIZE_CURSOR, Cursor.S_RESIZE_CURSOR -> BrowserCursor.RESIZE_NS;
+			case Cursor.W_RESIZE_CURSOR, Cursor.E_RESIZE_CURSOR -> BrowserCursor.RESIZE_EW;
+			case Cursor.HAND_CURSOR -> BrowserCursor.POINTING_HAND;
+			case Cursor.MOVE_CURSOR -> BrowserCursor.RESIZE_ALL;
+			default -> BrowserCursor.ARROW;
+		};
+	}
+
+	@Override
 	public void close() {
-		synchronized (paintLock) {
-			if (pendingPaintBuffer != null) {
-				MemoryUtil.memFree(pendingPaintBuffer);
-				pendingPaintBuffer = null;
-				pendingPaintCapacity = 0;
-			}
-			if (uploadPaintBuffer != null) {
-				MemoryUtil.memFree(uploadPaintBuffer);
-				uploadPaintBuffer = null;
-				uploadPaintCapacity = 0;
-			}
-			pendingPaintBytes = 0;
-			pendingPaintWidth = 0;
-			pendingPaintHeight = 0;
-			pendingPaintReady = false;
-			paintUploadScheduled = false;
-		}
-		if (gpuTextureView != null) {
-			gpuTextureView.close();
-			gpuTextureView = null;
-		}
-		if (gpuTexture != null) {
-			gpuTexture.close();
-			gpuTexture = null;
-		}
+		surface.close();
 		close(true);
 	}
 
 	@Override
-	public CefBrowser getCefBrowser() {
-		return this;
-	}
-
-	@Override
 	public void onPaint(CefBrowser browser, boolean popup, Rectangle[] dirtyRects, ByteBuffer buffer, int width, int height) {
-		if (!popup && dirtyRects.length > 0 && width > 0 && height > 0) {
-			int bytes = buffer.remaining();
-			if (bytes > 0) {
-				boolean scheduleUpload = false;
-				synchronized (paintLock) {
-					if (pendingPaintBuffer == null) {
-						pendingPaintBuffer = MemoryUtil.memAlloc(bytes);
-						pendingPaintCapacity = bytes;
-					} else if (pendingPaintCapacity < bytes) {
-						pendingPaintBuffer = MemoryUtil.memRealloc(pendingPaintBuffer, bytes);
-						pendingPaintCapacity = bytes;
-					}
-
-					ByteBuffer target = pendingPaintBuffer.duplicate();
-					target.clear();
-					target.limit(bytes);
-					MemoryUtil.memCopy(MemoryUtil.memAddress(buffer), MemoryUtil.memAddress(target), bytes);
-
-					pendingPaintBytes = bytes;
-					pendingPaintWidth = width;
-					pendingPaintHeight = height;
-					pendingPaintReady = true;
-					if (!paintUploadScheduled) {
-						paintUploadScheduled = true;
-						scheduleUpload = true;
-					}
-				}
-
-				if (scheduleUpload) {
-					Minecraft.getInstance().execute(this::flushPendingPaint);
-				}
-			}
-		}
-
+		surface.onPaint(browser, popup, dirtyRects, buffer, width, height);
 		super.onPaint(browser, popup, dirtyRects, buffer, width, height);
 	}
 
-	private void flushPendingPaint() {
-		while (true) {
-			ByteBuffer buffer;
-			int bytes;
-			int width;
-			int height;
-			synchronized (paintLock) {
-				if (!pendingPaintReady || pendingPaintBuffer == null) {
-					paintUploadScheduled = false;
-					return;
-				}
-
-				ByteBuffer reusableBuffer = uploadPaintBuffer;
-				int reusableCapacity = uploadPaintCapacity;
-				uploadPaintBuffer = pendingPaintBuffer;
-				uploadPaintCapacity = pendingPaintCapacity;
-				pendingPaintBuffer = reusableBuffer;
-				pendingPaintCapacity = reusableCapacity;
-
-				buffer = uploadPaintBuffer;
-				bytes = pendingPaintBytes;
-				width = pendingPaintWidth;
-				height = pendingPaintHeight;
-				pendingPaintReady = false;
-			}
-
-			onPaintInternal(buffer, bytes, width, height);
-		}
+	@Override
+	public void setVisible(boolean visible) {
+		setWindowVisibility(visible);
 	}
 
-	private void onPaintInternal(ByteBuffer buffer, int bytes, int width, int height) {
-		if (buffer == null || bytes <= 0 || width <= 0 || height <= 0) {
-			return;
-		}
-		if (gpuTexture == null || gpuTexture.getWidth(0) != width || gpuTexture.getHeight(0) != height) {
-			if (gpuTextureView != null) {
-				gpuTextureView.close();
-			}
-			if (gpuTexture != null) {
-				gpuTexture.close();
-			}
-			gpuTexture = RenderSystem.getDevice().createTexture(
-					"MCEFBrowser",
-					GpuTexture.USAGE_COPY_DST | GpuTexture.USAGE_COPY_SRC | GpuTexture.USAGE_TEXTURE_BINDING | GpuTexture.USAGE_RENDER_ATTACHMENT,
-					TextureFormat.RGBA8,
-					width,
-					height,
-					1,
-					1
-			);
-			gpuTextureView = RenderSystem.getDevice().createTextureView(gpuTexture);
-		}
+	@Override
+	public void navigate(String url) {
+		loadURL(url);
+	}
 
-		ByteBuffer uploadView = buffer.duplicate();
-		uploadView.clear();
-		uploadView.limit(bytes);
+	@Override
+	public void stop() {
+		stopLoad();
+	}
 
-		GlStateManager._bindTexture(((GlTexture) gpuTexture).glId());
-		GlStateManager._pixelStore(GlConst.GL_UNPACK_ROW_LENGTH, width);
-		GlStateManager._pixelStore(GlConst.GL_UNPACK_SKIP_PIXELS, 0);
-		GlStateManager._pixelStore(GlConst.GL_UNPACK_SKIP_ROWS, 0);
-		GlStateManager._pixelStore(GlConst.GL_UNPACK_ALIGNMENT, 4);
-		GlStateManager._texSubImage2D(
-				GlConst.GL_TEXTURE_2D,
-				0,
-				0,
-				0,
-				width,
-				height,
-				GL12.GL_BGRA,
-				GlConst.GL_UNSIGNED_BYTE,
-				uploadView
-		);
+	@Override
+	public void executeJavaScript(String script) {
+		String url = getURL();
+		executeJavaScript(script, url == null ? "about:blank" : url, 0);
+	}
+
+	@Override
+	public String currentUrl() {
+		String url = getURL();
+		return url == null ? "" : url;
+	}
+
+	@Override
+	public void mousePressed(int x, int y, int button, int modifiers, boolean doubled) {
+		onMouseClicked(new MouseButtonEvent(x, y, new net.minecraft.client.input.MouseButtonInfo(button, modifiers)), doubled);
+	}
+
+	@Override
+	public void mouseReleased(int x, int y, int button, int modifiers) {
+		onMouseReleased(new MouseButtonEvent(x, y, new net.minecraft.client.input.MouseButtonInfo(button, modifiers)));
+	}
+
+	@Override
+	public void mouseScrolled(int x, int y, double amount) {
+		onMouseScrolled(x, y, amount);
+	}
+
+	@Override
+	public void mouseMoved(int x, int y) {
+		onMouseMoved(x, y);
+	}
+
+	@Override
+	public void keyPressed(int keyCode, int modifiers) {
+		onKeyPressed(new KeyEvent(keyCode, 0, modifiers));
+	}
+
+	@Override
+	public void keyReleased(int keyCode, int modifiers) {
+		onKeyReleased(new KeyEvent(keyCode, 0, modifiers));
+	}
+
+	@Override
+	public void charTyped(int codePoint) {
+		onCharTyped(new CharacterEvent(codePoint));
 	}
 
 	@Override

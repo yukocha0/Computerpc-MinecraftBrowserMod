@@ -1,10 +1,11 @@
-package net.dimaskama.mcef.impl;
+package justpc.computerpc.client.browser.jcef;
 
+import justpc.computerpc.browser.api.BrowserInstance;
+import justpc.computerpc.browser.api.BrowserManager;
+import justpc.computerpc.browser.api.BrowserRuntimeOptions;
 import me.friwi.jcefmaven.CefAppBuilder;
 import me.friwi.jcefmaven.EnumProgress;
 import me.friwi.jcefmaven.IProgressHandler;
-import net.dimaskama.mcef.api.MCEFApi;
-import net.dimaskama.mcef.api.MCEFBrowser;
 import net.fabricmc.loader.api.FabricLoader;
 import org.cef.CefApp;
 import org.cef.CefClient;
@@ -17,8 +18,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
 
-public final class MCEFApiImpl implements MCEFApi {
-	public static final Path MOD_DIR = FabricLoader.getInstance().getConfigDir().resolve("computerpc-mcef");
+public final class JcefBrowserRuntime implements BrowserManager {
+	public static final Path MOD_DIR = FabricLoader.getInstance().getConfigDir().resolve("computerpc-browser");
 	public static final Path JCEF_PATH = MOD_DIR.resolve("jcef");
 	public static final Path CACHE_PATH = MOD_DIR.resolve("cache");
 
@@ -26,8 +27,10 @@ public final class MCEFApiImpl implements MCEFApi {
 
 	private final CefApp cefApp;
 	private final CefClient client;
+	private final BrowserRuntimeOptions options;
 
-	private MCEFApiImpl(InitializationImpl initialization) throws Exception {
+	private JcefBrowserRuntime(InitializationImpl initialization) throws Exception {
+		this.options = BrowserRuntimeOptions.STABLE_MIGRATION;
 		ensureDirectories();
 
 		CefAppBuilder cefAppBuilder = new CefAppBuilder();
@@ -36,6 +39,14 @@ public final class MCEFApiImpl implements MCEFApi {
 		cefAppBuilder.addJcefArgs(
 				"--autoplay-policy=no-user-gesture-required",
 				"--disable-web-security",
+				"--disable-background-networking",
+				"--disable-background-timer-throttling",
+				"--disable-breakpad",
+				"--disable-component-update",
+				"--disable-domain-reliability",
+				"--disable-features=BackgroundSync,MediaRouter,OptimizationHints,PushMessaging",
+				"--disable-notifications",
+				"--disable-sync",
 				"--enable-widevine-cdm"
 		);
 		cefApp = cefAppBuilder.build();
@@ -50,7 +61,7 @@ public final class MCEFApiImpl implements MCEFApi {
 
 	public static Initialization initialize() {
 		if (initialization == null) {
-			synchronized (MCEFApiImpl.class) {
+			synchronized (JcefBrowserRuntime.class) {
 				if (initialization == null) {
 					System.setProperty("java.awt.headless", "false");
 					initialization = new InitializationImpl();
@@ -66,16 +77,25 @@ public final class MCEFApiImpl implements MCEFApi {
 		return initialization;
 	}
 
+	public java.util.concurrent.CompletableFuture<JcefBrowserRuntime> instanceFuture() {
+		return initialization.getFuture().thenApply(JcefBrowserRuntime.class::cast);
+	}
+
 	@Override
-	public MCEFBrowser createBrowser(String url, boolean transparent) {
-		MCEFBrowserImpl browser = new MCEFBrowserImpl(client, url, transparent, CefRequestContext.getGlobalContext());
+	public BrowserInstance createBrowser(String url, boolean transparent) {
+		JcefEmbeddedBrowser browser = new JcefEmbeddedBrowser(client, url, transparent, CefRequestContext.getGlobalContext());
 		browser.setCloseAllowed();
 		browser.createImmediately();
+		browser.setWindowlessFrameRate(20);
 		return browser;
 	}
 
 	public void close() {
 		cefApp.dispose();
+	}
+
+	public BrowserRuntimeOptions options() {
+		return options;
 	}
 
 	private static void ensureDirectories() throws IOException {
@@ -84,14 +104,14 @@ public final class MCEFApiImpl implements MCEFApi {
 	}
 
 	private static final class InitializationImpl implements Initialization, IProgressHandler {
-		private final CompletableFuture<MCEFApi> future;
+		private final CompletableFuture<BrowserManager> future;
 		private volatile Stage stage = Stage.NOT_STARTED;
 		private volatile float percentage = -1.0F;
 
 		private InitializationImpl() {
 			future = CompletableFuture.supplyAsync(() -> {
 				try {
-					return new MCEFApiImpl(this);
+					return new JcefBrowserRuntime(this);
 				} catch (Throwable e) {
 					stage = Stage.DONE;
 					percentage = -1.0F;
@@ -111,19 +131,19 @@ public final class MCEFApiImpl implements MCEFApi {
 		}
 
 		@Override
-		public CompletableFuture<MCEFApi> getFuture() {
+		public CompletableFuture<BrowserManager> getFuture() {
 			return future;
 		}
 
 		@Override
 		public void handleProgress(EnumProgress state, float percent) {
 			stage = switch (state) {
-				case LOCATING -> Stage.NOT_STARTED;
-				case DOWNLOADING -> Stage.DOWNLOADING;
-				case EXTRACTING -> Stage.EXTRACTING;
-				case INSTALL -> Stage.INSTALL;
-				case INITIALIZING -> Stage.INITIALIZING;
-				case INITIALIZED -> Stage.DONE;
+				case LOCATING -> BrowserManager.Initialization.Stage.NOT_STARTED;
+				case DOWNLOADING -> BrowserManager.Initialization.Stage.DOWNLOADING;
+				case EXTRACTING -> BrowserManager.Initialization.Stage.EXTRACTING;
+				case INSTALL -> BrowserManager.Initialization.Stage.INSTALL;
+				case INITIALIZING -> BrowserManager.Initialization.Stage.INITIALIZING;
+				case INITIALIZED -> BrowserManager.Initialization.Stage.DONE;
 			};
 			percentage = percent;
 		}

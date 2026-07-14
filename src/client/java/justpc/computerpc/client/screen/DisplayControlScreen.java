@@ -3,10 +3,10 @@ package justpc.computerpc.client.screen;
 import justpc.computerpc.client.BrowserBootstrap;
 import justpc.computerpc.client.DisplayBrowserManager;
 import justpc.computerpc.client.render.BrowserRenderUtil;
+import justpc.computerpc.browser.api.BrowserInstance;
 import justpc.computerpc.network.ComputerpcNetworking;
 import justpc.computerpc.network.ComputerpcPayloads;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.dimaskama.mcef.api.MCEFBrowser;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -16,6 +16,9 @@ public final class DisplayControlScreen extends Screen {
 	private final net.minecraft.core.BlockPos rootPos;
 	private DisplayBrowserManager.DisplayBrowserSession session;
 	private String lastKnownUrl = "";
+	private int lastSentMouseX = Integer.MIN_VALUE;
+	private int lastSentMouseY = Integer.MIN_VALUE;
+	private int lastSentMouseButton = Integer.MIN_VALUE;
 
 	public DisplayControlScreen(net.minecraft.core.BlockPos rootPos) {
 		super(Component.literal("Display Control"));
@@ -65,7 +68,7 @@ public final class DisplayControlScreen extends Screen {
 			return;
 		}
 
-		MCEFBrowser browser = session.activeBrowser();
+		BrowserInstance browser = session.activeBrowser();
 		if (browser != null) {
 			BrowserRenderUtil.drawGuiTexture(graphics, browser, 0, 0, width, height);
 		}
@@ -143,6 +146,9 @@ public final class DisplayControlScreen extends Screen {
 		if (session != null) {
 			int x = browserX(event.x());
 			int y = browserY(event.y());
+			if (skipDuplicateMouseMove(x, y, event.button())) {
+				return true;
+			}
 			session.applyInput(ComputerpcNetworking.EVENT_MOUSE_MOVE, x, y, event.button(), 0, 0, 0, 0, 0);
 			ClientPlayNetworking.send(new ComputerpcPayloads.BrowserInputC2S(rootPos, ComputerpcNetworking.EVENT_MOUSE_MOVE, x, y, event.button(), 0, 0, 0, 0, 0));
 			return true;
@@ -156,6 +162,10 @@ public final class DisplayControlScreen extends Screen {
 		if (session != null) {
 			int x = browserX(mouseX);
 			int y = browserY(mouseY);
+			if (skipDuplicateMouseMove(x, y, 0)) {
+				super.mouseMoved(mouseX, mouseY);
+				return;
+			}
 			session.applyInput(ComputerpcNetworking.EVENT_MOUSE_MOVE, x, y, 0, 0, 0, 0, 0, 0);
 			ClientPlayNetworking.send(new ComputerpcPayloads.BrowserInputC2S(rootPos, ComputerpcNetworking.EVENT_MOUSE_MOVE, x, y, 0, 0, 0, 0, 0, 0));
 		}
@@ -180,8 +190,8 @@ public final class DisplayControlScreen extends Screen {
 		if (session == null) {
 			return;
 		}
-		MCEFBrowser browser = session.activeBrowser();
-		if (browser == null || browser.getCefBrowser().isLoading()) {
+		BrowserInstance browser = session.activeBrowser();
+		if (browser == null || browser.isLoading()) {
 			return;
 		}
 
@@ -198,5 +208,16 @@ public final class DisplayControlScreen extends Screen {
 
 	private int browserY(double mouseY) {
 		return Mth.clamp((int) (mouseY / (double) Math.max(1, height) * session.state().resolutionHeight()), 0, Math.max(0, session.state().resolutionHeight() - 1));
+	}
+
+	private boolean skipDuplicateMouseMove(int x, int y, int button) {
+		if (x == lastSentMouseX && y == lastSentMouseY && button == lastSentMouseButton) {
+			return true;
+		}
+
+		lastSentMouseX = x;
+		lastSentMouseY = y;
+		lastSentMouseButton = button;
+		return false;
 	}
 }

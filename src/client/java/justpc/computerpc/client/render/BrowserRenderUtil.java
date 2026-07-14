@@ -1,7 +1,8 @@
 package justpc.computerpc.client.render;
 
 import justpc.computerpc.Computerpc;
-import net.dimaskama.mcef.api.MCEFBrowser;
+import justpc.computerpc.browser.api.BrowserInstance;
+import justpc.computerpc.browser.api.BrowserTexture;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.renderer.RenderPipelines;
@@ -13,7 +14,7 @@ import java.util.IdentityHashMap;
 import java.util.Map;
 
 public final class BrowserRenderUtil {
-	private static final Map<MCEFBrowser, Identifier> REGISTERED_TEXTURES = new IdentityHashMap<>();
+	private static final Map<BrowserInstance, Identifier> REGISTERED_TEXTURES = new IdentityHashMap<>();
 	private static final Map<Identifier, BrowserTextureBridge> TEXTURE_BRIDGES = new IdentityHashMap<>();
 	private static int nextTextureId;
 
@@ -50,11 +51,12 @@ public final class BrowserRenderUtil {
 		return new AspectBoxF(fittedX, fittedY, fittedWidth, fittedHeight);
 	}
 
-	public static void drawGuiTexture(GuiGraphicsExtractor graphics, MCEFBrowser browser, int x, int y, int width, int height) {
+	public static void drawGuiTexture(GuiGraphicsExtractor graphics, BrowserInstance browser, int x, int y, int width, int height) {
 		if (browser == null || width <= 0 || height <= 0) {
 			return;
 		}
-		if (browser.getTexture() == null) {
+		BrowserTexture browserTexture = browser.texture();
+		if (browserTexture == null) {
 			return;
 		}
 
@@ -63,13 +65,13 @@ public final class BrowserRenderUtil {
 			return;
 		}
 
-		int textureWidth = Math.max(1, browser.getTexture().getWidth(0));
-		int textureHeight = Math.max(1, browser.getTexture().getHeight(0));
+		int textureWidth = Math.max(1, browserTexture.width());
+		int textureHeight = Math.max(1, browserTexture.height());
 		graphics.blit(RenderPipelines.GUI_TEXTURED, textureId, x, y, 0.0f, 0.0f, width, height, textureWidth, textureHeight, textureWidth, textureHeight);
 	}
 
-	public static @Nullable Identifier syncWorldTexture(MCEFBrowser browser) {
-		if (browser == null || browser.getTextureView() == null) {
+	public static @Nullable Identifier syncWorldTexture(BrowserInstance browser) {
+		if (browser == null || browser.texture() == null) {
 			return null;
 		}
 
@@ -90,11 +92,11 @@ public final class BrowserRenderUtil {
 			}
 		}
 
-		bridge.update(browser);
+		bridge.update(browser.texture());
 		return textureId;
 	}
 
-	public static void release(MCEFBrowser browser) {
+	public static void release(BrowserInstance browser) {
 		Identifier textureId = REGISTERED_TEXTURES.remove(browser);
 		if (textureId == null) {
 			return;

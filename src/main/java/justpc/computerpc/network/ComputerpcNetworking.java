@@ -8,6 +8,7 @@ import net.fabricmc.fabric.api.networking.v1.PlayerLookup;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.phys.Vec3;
 
 public final class ComputerpcNetworking {
 	public static final int EVENT_MOUSE_MOVE = 0;
@@ -84,6 +85,6 @@ public final class ComputerpcNetworking {
 	}
 
 	private static boolean isControllingPlayer(ServerPlayer player, DisplayBlockEntity display) {
-		return player.distanceToSqr(display.getBlockPos().getCenter()) <= 2500.0;
+		return player.distanceToSqr(Vec3.atCenterOf(display.getBlockPos())) <= 2500.0;
 	}
 }

@@ -1,22 +1,23 @@
 package justpc.computerpc.client;
 
-import net.dimaskama.mcef.api.MCEFApi;
+import justpc.computerpc.browser.api.BrowserManager;
+import justpc.computerpc.client.browser.BrowserBackend;
 import net.minecraft.client.Minecraft;
 
 public final class BrowserBootstrap {
 	private static volatile String status = "Chromium is starting";
-	private static volatile MCEFApi.Initialization initialization;
+	private static volatile BrowserManager.Initialization initialization;
 
 	private BrowserBootstrap() {
 	}
 
 	public static void initialize() {
-		initialization = MCEFApi.initialize();
+		initialization = BrowserBackend.initialize();
 		status = "Chromium is starting";
 	}
 
 	public static void tick(Minecraft client) {
-		MCEFApi.Initialization currentInitialization = initialization;
+		BrowserManager.Initialization currentInitialization = initialization;
 		if (currentInitialization == null) {
 			return;
 		}

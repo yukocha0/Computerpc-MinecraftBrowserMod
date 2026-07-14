@@ -18,7 +18,7 @@ public record DisplayStateData(List<BrowserTabData> tabs, int activeTab, int res
 			Codec.FLOAT.fieldOf("volume").forGetter(DisplayStateData::volume)
 	).apply(instance, DisplayStateData::new));
 
-	public static final DisplayStateData DEFAULT = new DisplayStateData(DEFAULT_TABS, 0, 960, 540, 1.0f);
+	public static final DisplayStateData DEFAULT = new DisplayStateData(DEFAULT_TABS, 0, 640, 360, 1.0f);
 
 	public DisplayStateData {
 		tabs = List.copyOf(tabs);

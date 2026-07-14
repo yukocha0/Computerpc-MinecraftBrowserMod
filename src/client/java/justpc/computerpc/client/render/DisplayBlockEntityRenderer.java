@@ -19,13 +19,20 @@ import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public final class DisplayBlockEntityRenderer implements BlockEntityRenderer<DisplayBlockEntity, DisplayBlockEntityRenderer.State> {
 	private static final float SCREEN_OFFSET = 0.0025f;
 	private static final int FULL_BRIGHT = 15728880;
+	private static final Map<TextureCacheKey, TextureCacheEntry> TEXTURE_CACHE = new HashMap<>();
+	private static long textureCacheGameTime = Long.MIN_VALUE;
 
 	public DisplayBlockEntityRenderer(BlockEntityRendererProvider.Context context) {
 	}
@@ -42,21 +49,17 @@ public final class DisplayBlockEntityRenderer implements BlockEntityRenderer<Dis
 
 		BlockState blockState = blockEntity.getBlockState();
 		Direction facing = blockState.getValue(DisplayBlock.FACING);
-		DisplayCluster cluster = blockEntity.getCluster();
+		boolean powered = blockState.getValue(DisplayBlock.POWERED);
 		state.facing = facing;
-		state.renderScreen = blockEntity.isPowered();
+		state.renderScreen = powered;
 		state.light = FULL_BRIGHT;
 
-		if (!state.renderScreen || !(blockEntity.getLevel() instanceof ClientLevel clientLevel)) {
+		if (!powered || !(blockEntity.getLevel() instanceof ClientLevel clientLevel)) {
 			return;
 		}
 
-		DisplayBrowserManager.DisplayBrowserSession session = DisplayBrowserManager.getSession(clientLevel, cluster.root());
-		if (session == null || session.activeBrowser() == null) {
-			return;
-		}
-
-		Identifier texture = BrowserRenderUtil.syncWorldTexture(session.activeBrowser());
+		DisplayCluster cluster = blockEntity.getCluster();
+		Identifier texture = textureForCluster(clientLevel, cluster.root());
 		if (texture == null) {
 			return;
 		}
@@ -74,12 +77,41 @@ public final class DisplayBlockEntityRenderer implements BlockEntityRenderer<Dis
 
 	@Override
 	public boolean shouldRenderOffScreen() {
-		return true;
+		return false;
 	}
 
 	@Override
 	public int getViewDistance() {
 		return 128;
+	}
+
+	private static @Nullable Identifier textureForCluster(ClientLevel level, BlockPos rootPos) {
+		prepareTextureCache(level);
+
+		TextureCacheKey key = new TextureCacheKey(level.dimension(), rootPos.immutable());
+		TextureCacheEntry cached = TEXTURE_CACHE.get(key);
+		if (cached != null) {
+			return cached.texture;
+		}
+
+		Identifier texture = null;
+		DisplayBrowserManager.DisplayBrowserSession session = DisplayBrowserManager.getRenderSession(level, rootPos);
+		if (session != null && session.activeBrowser() != null) {
+			texture = BrowserRenderUtil.syncWorldTexture(session.activeBrowser());
+		}
+
+		TEXTURE_CACHE.put(key, new TextureCacheEntry(texture));
+		return texture;
+	}
+
+	private static void prepareTextureCache(ClientLevel level) {
+		long gameTime = level.getGameTime();
+		if (textureCacheGameTime == gameTime) {
+			return;
+		}
+
+		textureCacheGameTime = gameTime;
+		TEXTURE_CACHE.clear();
 	}
 
 	private static void emitScreenQuad(State state, PoseStack.Pose pose, VertexConsumer consumer) {
@@ -176,5 +208,11 @@ public final class DisplayBlockEntityRenderer implements BlockEntityRenderer<Dis
 			vAtMaxY = 0.0f;
 			texture = null;
 		}
+	}
+
+	private record TextureCacheKey(ResourceKey<Level> dimension, BlockPos rootPos) {
+	}
+
+	private record TextureCacheEntry(@Nullable Identifier texture) {
 	}
 }

@@ -44,7 +44,7 @@ public final class ComputerpcClient implements ClientModInitializer {
 				}
 			}
 
-			Minecraft.getInstance().setScreen(new RemoteBrowserScreen());
+			Minecraft.getInstance().setScreenAndShow(new RemoteBrowserScreen());
 			return InteractionResult.SUCCESS;
 		});
 

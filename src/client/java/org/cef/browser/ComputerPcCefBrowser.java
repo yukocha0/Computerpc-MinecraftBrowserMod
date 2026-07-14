@@ -16,12 +16,12 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
-public class CustomCefBrowserOsr extends CefBrowser_N implements CefRenderHandler {
+public class ComputerPcCefBrowser extends CefBrowser_N implements CefRenderHandler {
 	protected final Rectangle browserRect = new Rectangle(0, 0, 1, 1);
 	protected final Component component = new Component() {
 		@Override
 		public String getName() {
-			return "CustomCefBrowserOsr";
+			return "ComputerPcCefBrowser";
 		}
 
 		@Override
@@ -38,7 +38,7 @@ public class CustomCefBrowserOsr extends CefBrowser_N implements CefRenderHandle
 	protected final boolean transparent;
 	private final List<Consumer<CefPaintEvent>> onPaintListeners = new CopyOnWriteArrayList<>();
 
-	public CustomCefBrowserOsr(CefClient client, String url, boolean transparent, CefRequestContext context, CefBrowserSettings settings) {
+	public ComputerPcCefBrowser(CefClient client, String url, boolean transparent, CefRequestContext context, CefBrowserSettings settings) {
 		super(client, url, context, null, null, settings);
 		this.transparent = transparent;
 	}
