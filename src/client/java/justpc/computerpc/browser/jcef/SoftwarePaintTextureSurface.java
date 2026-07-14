@@ -1,4 +1,4 @@
-package justpc.computerpc.client.browser.jcef;
+package justpc.computerpc.browser.jcef;
 
 import com.mojang.blaze3d.GpuFormat;
 import com.mojang.blaze3d.opengl.GlConst;

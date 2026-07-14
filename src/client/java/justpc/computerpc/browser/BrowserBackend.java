@@ -1,7 +1,7 @@
-package justpc.computerpc.client.browser;
+package justpc.computerpc.browser;
 
 import justpc.computerpc.browser.api.BrowserManager;
-import justpc.computerpc.client.browser.jcef.JcefBrowserRuntime;
+import justpc.computerpc.browser.jcef.JcefBrowserRuntime;
 
 import java.util.concurrent.CompletableFuture;
 

@@ -1,4 +1,4 @@
-package justpc.computerpc.client.browser.jcef;
+package justpc.computerpc.browser.jcef;
 
 import justpc.computerpc.browser.api.BrowserFrame;
 import justpc.computerpc.browser.api.BrowserTexture;

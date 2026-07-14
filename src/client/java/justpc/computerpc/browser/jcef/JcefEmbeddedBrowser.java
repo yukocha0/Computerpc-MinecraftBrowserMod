@@ -1,4 +1,4 @@
-package justpc.computerpc.client.browser.jcef;
+package justpc.computerpc.browser.jcef;
 
 import justpc.computerpc.browser.api.BrowserCursor;
 import justpc.computerpc.browser.api.BrowserFrame;

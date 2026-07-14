@@ -1,7 +1,7 @@
 package justpc.computerpc.client;
 
 import justpc.computerpc.browser.api.BrowserManager;
-import justpc.computerpc.client.browser.BrowserBackend;
+import justpc.computerpc.browser.BrowserBackend;
 import net.minecraft.client.Minecraft;
 
 public final class BrowserBootstrap {

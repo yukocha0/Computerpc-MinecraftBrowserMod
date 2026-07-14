@@ -8,7 +8,7 @@ import justpc.computerpc.client.render.BrowserRenderUtil;
 import justpc.computerpc.network.ComputerpcNetworking;
 import justpc.computerpc.network.ComputerpcPayloads;
 import justpc.computerpc.util.DisplayCluster;
-import justpc.computerpc.client.browser.BrowserBackend;
+import justpc.computerpc.browser.BrowserBackend;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;

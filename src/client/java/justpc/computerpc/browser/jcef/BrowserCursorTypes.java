@@ -1,4 +1,4 @@
-package justpc.computerpc.client.browser.jcef;
+package justpc.computerpc.browser.jcef;
 
 import com.mojang.blaze3d.platform.cursor.CursorType;
 import com.mojang.blaze3d.platform.cursor.CursorTypes;
