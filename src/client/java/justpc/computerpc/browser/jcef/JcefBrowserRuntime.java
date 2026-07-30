@@ -52,9 +52,16 @@ public final class JcefBrowserRuntime implements BrowserManager {
 				"--disable-notifications",
 				"--disable-renderer-backgrounding",
 				"--disable-sync",
+				"--enable-gpu",
+				"--enable-gpu-compositing",
+				"--enable-gpu-rasterization",
+				"--enable-oop-rasterization",
+				"--enable-zero-copy",
+				"--ignore-gpu-blocklist",
 				"--enable-widevine-cdm"
 		);
 		CefSettings cefSettings = cefAppBuilder.getCefSettings();
+		cefSettings.windowless_rendering_enabled = true;
 		cefSettings.user_agent_product = "Computerpc/1.0.0";
 		cefSettings.root_cache_path = MOD_DIR.toAbsolutePath().toString();
 		cefSettings.cache_path = CACHE_PATH.toAbsolutePath().toString();
