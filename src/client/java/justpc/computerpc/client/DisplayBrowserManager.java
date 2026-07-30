@@ -469,8 +469,7 @@ public final class DisplayBrowserManager {
 			if (currentUrl == null || currentUrl.isBlank()) {
 				return authoritativeUrl;
 			}
-			if (browser.isLoading()
-					&& BrowserTabData.defaultUrl().equals(currentUrl)
+			if (BrowserTabData.defaultUrl().equals(currentUrl)
 					&& !BrowserTabData.defaultUrl().equals(authoritativeUrl)) {
 				return authoritativeUrl;
 			}
