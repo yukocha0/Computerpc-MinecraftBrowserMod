@@ -24,6 +24,7 @@ public final class JcefBrowserRuntime implements BrowserManager {
 	public static final Path JCEF_PATH = MOD_DIR.resolve("jcef");
 	public static final Path CACHE_PATH = MOD_DIR.resolve("cache");
 
+	private static final int WINDOWLESS_FRAME_RATE = 60;
 	private static volatile InitializationImpl initialization;
 
 	private final CefApp cefApp;
@@ -44,11 +45,13 @@ public final class JcefBrowserRuntime implements BrowserManager {
 				"--disable-web-security",
 				"--disable-background-networking",
 				"--disable-background-timer-throttling",
+				"--disable-backgrounding-occluded-windows",
 				"--disable-breakpad",
 				"--disable-component-update",
 				"--disable-domain-reliability",
 				"--disable-features=BackgroundSync,MediaRouter,OptimizationHints,PushMessaging",
 				"--disable-notifications",
+				"--disable-renderer-backgrounding",
 				"--disable-sync",
 				"--enable-widevine-cdm"
 		);
@@ -89,7 +92,7 @@ public final class JcefBrowserRuntime implements BrowserManager {
 		JcefEmbeddedBrowser browser = new JcefEmbeddedBrowser(client, url, transparent, CefRequestContext.getGlobalContext(), renderBridge);
 		browser.setCloseAllowed();
 		browser.createImmediately();
-		browser.setWindowlessFrameRate(20);
+		browser.setWindowlessFrameRate(WINDOWLESS_FRAME_RATE);
 		return browser;
 	}
 

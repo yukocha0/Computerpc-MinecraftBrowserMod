@@ -11,7 +11,7 @@ import org.lwjgl.system.MemoryUtil;
 
 import java.awt.Rectangle;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 
 final class SoftwarePaintTextureSurface implements JcefBrowserSurface {
@@ -72,13 +72,10 @@ final class SoftwarePaintTextureSurface implements JcefBrowserSurface {
 			target.limit(bytes);
 			MemoryUtil.memCopy(MemoryUtil.memAddress(buffer), MemoryUtil.memAddress(target), bytes);
 
-			List<DirtyRectangle> dirtyRectangles = Arrays.stream(dirtyRects)
-					.map(rect -> new DirtyRectangle(rect.x, rect.y, rect.width, rect.height))
-					.toList();
 			pendingPaintBytes = bytes;
 			pendingPaintWidth = width;
 			pendingPaintHeight = height;
-			pendingDirtyRectangles = dirtyRectangles;
+			pendingDirtyRectangles = copyDirtyRectangles(dirtyRects);
 			pendingPaintReady = true;
 			if (!paintUploadScheduled) {
 				paintUploadScheduled = true;
@@ -107,6 +104,7 @@ final class SoftwarePaintTextureSurface implements JcefBrowserSurface {
 			pendingPaintBytes = 0;
 			pendingPaintWidth = 0;
 			pendingPaintHeight = 0;
+			pendingDirtyRectangles = List.of();
 			pendingPaintReady = false;
 			paintUploadScheduled = false;
 		}
@@ -175,6 +173,14 @@ final class SoftwarePaintTextureSurface implements JcefBrowserSurface {
 
 		renderBridge.uploadBgra(externalTexture, uploadView, bytes, width, height);
 		latestFrame = new BrowserFrame(externalTexture, width, height, dirtyRectangles);
+	}
+
+	private static List<DirtyRectangle> copyDirtyRectangles(Rectangle[] dirtyRects) {
+		List<DirtyRectangle> rectangles = new ArrayList<>(dirtyRects.length);
+		for (Rectangle rect : dirtyRects) {
+			rectangles.add(new DirtyRectangle(rect.x, rect.y, rect.width, rect.height));
+		}
+		return List.copyOf(rectangles);
 	}
 
 	private List<DirtyRectangle> pendingDirtyRectangles = List.of();
