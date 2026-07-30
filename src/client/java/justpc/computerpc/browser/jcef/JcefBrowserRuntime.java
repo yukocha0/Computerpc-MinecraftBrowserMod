@@ -43,7 +43,6 @@ public final class JcefBrowserRuntime implements BrowserManager {
 		cefAppBuilder.addJcefArgs(
 				"--autoplay-policy=no-user-gesture-required",
 				"--disable-web-security",
-				"--disable-background-networking",
 				"--disable-background-timer-throttling",
 				"--disable-backgrounding-occluded-windows",
 				"--disable-breakpad",
@@ -55,12 +54,12 @@ public final class JcefBrowserRuntime implements BrowserManager {
 				"--disable-sync",
 				"--enable-widevine-cdm"
 		);
-		cefApp = cefAppBuilder.build();
-
-		CefSettings cefSettings = new CefSettings();
+		CefSettings cefSettings = cefAppBuilder.getCefSettings();
 		cefSettings.user_agent_product = "Computerpc/1.0.0";
-		cefSettings.root_cache_path = CACHE_PATH.toAbsolutePath().toString();
-		cefApp.setSettings(cefSettings);
+		cefSettings.root_cache_path = MOD_DIR.toAbsolutePath().toString();
+		cefSettings.cache_path = CACHE_PATH.toAbsolutePath().toString();
+		cefSettings.persist_session_cookies = true;
+		cefApp = cefAppBuilder.build();
 
 		client = cefApp.createClient();
 	}
