@@ -246,6 +246,7 @@ public final class DisplayBrowserManager {
 		private DisplayKey key;
 		private final List<BrowserInstance> browsers = new ArrayList<>();
 		private final Map<BrowserInstance, String> volumeSyncedUrls = new IdentityHashMap<>();
+		private final Map<BrowserInstance, String> requestedUrls = new IdentityHashMap<>();
 		private DisplayStateData state = DisplayStateData.DEFAULT;
 		private long lastAccessTick;
 		private Set<BlockPos> clusterBlocks = Set.of();
@@ -287,6 +288,7 @@ public final class DisplayBrowserManager {
 			while (browsers.size() > sanitized.tabs().size()) {
 				BrowserInstance browser = browsers.removeLast();
 				volumeSyncedUrls.remove(browser);
+				requestedUrls.remove(browser);
 				BrowserRenderUtil.release(browser);
 				browser.close();
 			}
@@ -299,13 +301,15 @@ public final class DisplayBrowserManager {
 				if (i >= browsers.size()) {
 					browser = BrowserBackend.getInstance().createBrowser(url, false);
 					browsers.add(browser);
+					requestedUrls.put(browser, url);
 					created = true;
 				} else {
 					browser = browsers.get(i);
 					String currentUrl = browser.currentUrl();
-					if (stateChanged && !url.equals(currentUrl)) {
+					if (stateChanged && !url.equals(currentUrl) && !url.equals(requestedUrls.get(browser))) {
 						haltBrowserPage(browser);
 						browser.navigate(url);
+						requestedUrls.put(browser, url);
 						urlChanged = true;
 					}
 				}
@@ -325,7 +329,9 @@ public final class DisplayBrowserManager {
 			BrowserInstance activeBrowser = activeBrowser();
 			if (activeTabChanged && activeBrowser != null && activeBrowser.texture() == null) {
 				haltBrowserPage(activeBrowser);
-				activeBrowser.navigate(sanitized.activeTabData().currentUrl());
+				String targetUrl = sanitized.activeTabData().currentUrl();
+				activeBrowser.navigate(targetUrl);
+				requestedUrls.put(activeBrowser, targetUrl);
 				volumeSyncedUrls.remove(activeBrowser);
 			}
 		}
@@ -360,6 +366,7 @@ public final class DisplayBrowserManager {
 			}
 			browsers.clear();
 			volumeSyncedUrls.clear();
+			requestedUrls.clear();
 			clusterBlocks = Set.of();
 			suspended = false;
 		}
@@ -414,6 +421,9 @@ public final class DisplayBrowserManager {
 					continue;
 				}
 
+				if (Objects.equals(requestedUrls.get(browser), currentUrl)) {
+					requestedUrls.remove(browser);
+				}
 				applyVolume(browser, state.volume());
 				volumeSyncedUrls.put(browser, currentUrl);
 			}
@@ -466,6 +476,12 @@ public final class DisplayBrowserManager {
 			}
 
 			String currentUrl = browser.currentUrl();
+			String requestedUrl = requestedUrls.get(browser);
+			if (requestedUrl != null
+					&& !BrowserTabData.defaultUrl().equals(requestedUrl)
+					&& (browser.isLoading() || currentUrl == null || currentUrl.isBlank() || BrowserTabData.defaultUrl().equals(currentUrl))) {
+				return requestedUrl;
+			}
 			if (currentUrl == null || currentUrl.isBlank()) {
 				return authoritativeUrl;
 			}
