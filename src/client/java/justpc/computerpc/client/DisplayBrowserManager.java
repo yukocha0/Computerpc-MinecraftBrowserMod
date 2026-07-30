@@ -272,6 +272,10 @@ public final class DisplayBrowserManager {
 		}
 
 		public void sync(DisplayStateData newState) {
+			sync(newState, false);
+		}
+
+		private void sync(DisplayStateData newState, boolean allowDefaultNavigation) {
 			DisplayStateData sanitized = newState.sanitize();
 			boolean stateChanged = !sanitized.equals(this.state);
 			if (!stateChanged && browsers.size() == sanitized.tabs().size()) {
@@ -306,7 +310,10 @@ public final class DisplayBrowserManager {
 				} else {
 					browser = browsers.get(i);
 					String currentUrl = browser.currentUrl();
-					if (stateChanged && !url.equals(currentUrl) && !url.equals(requestedUrls.get(browser))) {
+					if (stateChanged
+							&& !url.equals(currentUrl)
+							&& !url.equals(requestedUrls.get(browser))
+							&& shouldApplyNavigation(url, currentUrl, allowDefaultNavigation)) {
 						haltBrowserPage(browser);
 						browser.navigate(url);
 						requestedUrls.put(browser, url);
@@ -328,8 +335,11 @@ public final class DisplayBrowserManager {
 			applyActivityPolicy();
 			BrowserInstance activeBrowser = activeBrowser();
 			if (activeTabChanged && activeBrowser != null && activeBrowser.texture() == null) {
-				haltBrowserPage(activeBrowser);
 				String targetUrl = sanitized.activeTabData().currentUrl();
+				if (!shouldApplyNavigation(targetUrl, activeBrowser.currentUrl(), allowDefaultNavigation)) {
+					return;
+				}
+				haltBrowserPage(activeBrowser);
 				activeBrowser.navigate(targetUrl);
 				requestedUrls.put(activeBrowser, targetUrl);
 				volumeSyncedUrls.remove(activeBrowser);
@@ -340,7 +350,7 @@ public final class DisplayBrowserManager {
 			DisplayStateData sanitized = newState.sanitize();
 			previewState = sanitized;
 			previewStateUntilTick = currentTick + PREVIEW_SYNC_GRACE_TICKS;
-			sync(sanitized);
+			sync(sanitized, true);
 		}
 
 		public void syncAuthoritative(DisplayStateData newState, long currentTick) {
@@ -356,6 +366,13 @@ public final class DisplayBrowserManager {
 			}
 
 			sync(sanitized);
+		}
+
+		private static boolean shouldApplyNavigation(String targetUrl, String currentUrl, boolean allowDefaultNavigation) {
+			if (allowDefaultNavigation || !BrowserTabData.defaultUrl().equals(targetUrl)) {
+				return true;
+			}
+			return currentUrl == null || currentUrl.isBlank() || BrowserTabData.defaultUrl().equals(currentUrl);
 		}
 
 		public void close() {
