@@ -2,6 +2,7 @@ package justpc.computerpc.browser.jcef;
 
 import justpc.computerpc.browser.api.BrowserInstance;
 import justpc.computerpc.browser.api.BrowserManager;
+import justpc.computerpc.browser.api.BrowserRenderBridge;
 import justpc.computerpc.browser.api.BrowserRuntimeOptions;
 import me.friwi.jcefmaven.CefAppBuilder;
 import me.friwi.jcefmaven.EnumProgress;
@@ -27,9 +28,11 @@ public final class JcefBrowserRuntime implements BrowserManager {
 
 	private final CefApp cefApp;
 	private final CefClient client;
+	private final BrowserRenderBridge renderBridge;
 	private final BrowserRuntimeOptions options;
 
-	private JcefBrowserRuntime(InitializationImpl initialization) throws Exception {
+	private JcefBrowserRuntime(InitializationImpl initialization, BrowserRenderBridge renderBridge) throws Exception {
+		this.renderBridge = renderBridge;
 		this.options = BrowserRuntimeOptions.STABLE_MIGRATION;
 		ensureDirectories();
 
@@ -59,12 +62,12 @@ public final class JcefBrowserRuntime implements BrowserManager {
 		client = cefApp.createClient();
 	}
 
-	public static Initialization initialize() {
+	public static Initialization initialize(BrowserRenderBridge renderBridge) {
 		if (initialization == null) {
 			synchronized (JcefBrowserRuntime.class) {
 				if (initialization == null) {
 					System.setProperty("java.awt.headless", "false");
-					initialization = new InitializationImpl();
+					initialization = new InitializationImpl(renderBridge);
 				}
 			}
 		}
@@ -83,7 +86,7 @@ public final class JcefBrowserRuntime implements BrowserManager {
 
 	@Override
 	public BrowserInstance createBrowser(String url, boolean transparent) {
-		JcefEmbeddedBrowser browser = new JcefEmbeddedBrowser(client, url, transparent, CefRequestContext.getGlobalContext());
+		JcefEmbeddedBrowser browser = new JcefEmbeddedBrowser(client, url, transparent, CefRequestContext.getGlobalContext(), renderBridge);
 		browser.setCloseAllowed();
 		browser.createImmediately();
 		browser.setWindowlessFrameRate(20);
@@ -108,10 +111,10 @@ public final class JcefBrowserRuntime implements BrowserManager {
 		private volatile Stage stage = Stage.NOT_STARTED;
 		private volatile float percentage = -1.0F;
 
-		private InitializationImpl() {
+		private InitializationImpl(BrowserRenderBridge renderBridge) {
 			future = CompletableFuture.supplyAsync(() -> {
 				try {
-					return new JcefBrowserRuntime(this);
+					return new JcefBrowserRuntime(this, renderBridge);
 				} catch (Throwable e) {
 					stage = Stage.DONE;
 					percentage = -1.0F;

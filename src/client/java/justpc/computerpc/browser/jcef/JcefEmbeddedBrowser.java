@@ -4,13 +4,9 @@ import justpc.computerpc.browser.api.BrowserCursor;
 import justpc.computerpc.browser.api.BrowserFrame;
 import justpc.computerpc.browser.api.BrowserInput;
 import justpc.computerpc.browser.api.BrowserInstance;
+import justpc.computerpc.browser.api.BrowserRenderBridge;
 import justpc.computerpc.browser.api.BrowserRenderer;
 import justpc.computerpc.browser.api.BrowserTexture;
-import com.mojang.blaze3d.platform.cursor.CursorType;
-import com.mojang.blaze3d.platform.cursor.CursorTypes;
-import net.minecraft.client.input.CharacterEvent;
-import net.minecraft.client.input.KeyEvent;
-import net.minecraft.client.input.MouseButtonEvent;
 import org.cef.CefBrowserSettings;
 import org.cef.CefClient;
 import org.cef.browser.CefBrowser;
@@ -28,7 +24,7 @@ import java.awt.event.MouseWheelEvent;
 import java.nio.ByteBuffer;
 
 public final class JcefEmbeddedBrowser extends ComputerPcCefBrowser implements BrowserInstance, BrowserInput, BrowserRenderer {
-	private final JcefBrowserSurface surface = new SoftwarePaintTextureSurface("ComputerPcBrowser");
+	private final JcefBrowserSurface surface;
 	private int lastPressedMouseButton = MouseEvent.NOBUTTON;
 	private boolean lastMouseEntered;
 	private int lastMouseX = Integer.MIN_VALUE;
@@ -36,8 +32,9 @@ public final class JcefEmbeddedBrowser extends ComputerPcCefBrowser implements B
 	private boolean lastMouseDragging;
 	private int cursorType = Cursor.DEFAULT_CURSOR;
 
-	public JcefEmbeddedBrowser(CefClient client, String url, boolean transparent, CefRequestContext context) {
+	public JcefEmbeddedBrowser(CefClient client, String url, boolean transparent, CefRequestContext context, BrowserRenderBridge renderBridge) {
 		super(client, url, transparent, context, (CefBrowserSettings) null);
+		this.surface = new SoftwarePaintTextureSurface("ComputerPcBrowser", renderBridge);
 	}
 
 	@Override
@@ -60,24 +57,24 @@ public final class JcefEmbeddedBrowser extends ComputerPcCefBrowser implements B
 		wasResized(width, height);
 	}
 
-	public void onMouseClicked(MouseButtonEvent event, boolean doubled) {
-		int btn = toAwtMouseButton(event.button());
+	private void sendAwtMousePressed(int x, int y, int button, int modifiers, boolean doubled) {
+		int btn = toAwtMouseButton(button);
 		lastPressedMouseButton = btn;
 		sendMouseEvent(new MouseEvent(
 				component,
 				MouseEvent.MOUSE_PRESSED,
 				System.currentTimeMillis(),
-				toAwtInputModifiers(event.modifiers()),
-				(int) event.x(),
-				(int) event.y(),
+				toAwtInputModifiers(modifiers),
+				x,
+				y,
 				doubled ? 2 : 1,
 				false,
 				btn
 		));
 	}
 
-	public void onMouseReleased(MouseButtonEvent event) {
-		int btn = toAwtMouseButton(event.button());
+	private void sendAwtMouseReleased(int x, int y, int button, int modifiers) {
+		int btn = toAwtMouseButton(button);
 		if (btn == lastPressedMouseButton) {
 			lastPressedMouseButton = MouseEvent.NOBUTTON;
 		}
@@ -86,16 +83,16 @@ public final class JcefEmbeddedBrowser extends ComputerPcCefBrowser implements B
 				component,
 				MouseEvent.MOUSE_RELEASED,
 				System.currentTimeMillis(),
-				toAwtInputModifiers(event.modifiers()),
-				(int) event.x(),
-				(int) event.y(),
+				toAwtInputModifiers(modifiers),
+				x,
+				y,
 				1,
 				false,
 				btn
 		));
 	}
 
-	public void onMouseScrolled(int x, int y, double amount) {
+	private void sendAwtMouseScrolled(int x, int y, double amount) {
 		sendMouseWheelEvent(new MouseWheelEvent(
 				component,
 				MouseWheelEvent.WHEEL_UNIT_SCROLL,
@@ -111,7 +108,7 @@ public final class JcefEmbeddedBrowser extends ComputerPcCefBrowser implements B
 		));
 	}
 
-	public void onMouseMoved(int x, int y) {
+	private void sendAwtMouseMoved(int x, int y) {
 		boolean mouseEntered = browserRect.contains(x, y);
 		boolean dragging = lastPressedMouseButton != MouseEvent.NOBUTTON;
 		if (x == lastMouseX && y == lastMouseY && dragging == lastMouseDragging && mouseEntered == lastMouseEntered) {
@@ -149,38 +146,38 @@ public final class JcefEmbeddedBrowser extends ComputerPcCefBrowser implements B
 		));
 	}
 
-	public void onKeyPressed(KeyEvent event) {
-		int key = toAwtKeyCode(event.key());
+	private void sendAwtKeyPressed(int keyCode, int modifiers) {
+		int key = toAwtKeyCode(keyCode);
 		sendKeyEvent(new java.awt.event.KeyEvent(
 				component,
 				java.awt.event.KeyEvent.KEY_PRESSED,
 				System.currentTimeMillis(),
-				toAwtInputModifiers(event.modifiers()),
+				toAwtInputModifiers(modifiers),
 				key,
 				(char) key
 		));
 	}
 
-	public void onKeyReleased(KeyEvent event) {
-		int key = toAwtKeyCode(event.key());
+	private void sendAwtKeyReleased(int keyCode, int modifiers) {
+		int key = toAwtKeyCode(keyCode);
 		sendKeyEvent(new java.awt.event.KeyEvent(
 				component,
 				java.awt.event.KeyEvent.KEY_RELEASED,
 				System.currentTimeMillis(),
-				toAwtInputModifiers(event.modifiers()),
+				toAwtInputModifiers(modifiers),
 				key,
 				(char) key
 		));
 	}
 
-	public void onCharTyped(CharacterEvent event) {
+	private void sendAwtCharTyped(int codePoint) {
 		sendKeyEvent(new java.awt.event.KeyEvent(
 				component,
 				java.awt.event.KeyEvent.KEY_TYPED,
 				System.currentTimeMillis(),
 				0,
 				java.awt.event.KeyEvent.VK_UNDEFINED,
-				(char) event.codepoint()
+				(char) codePoint
 		));
 	}
 
@@ -192,20 +189,6 @@ public final class JcefEmbeddedBrowser extends ComputerPcCefBrowser implements B
 	@Override
 	public @Nullable BrowserFrame latestFrame() {
 		return surface.latestFrame();
-	}
-
-	public CursorType getCursorType() {
-		return switch (cursor()) {
-			case CROSSHAIR -> CursorTypes.CROSSHAIR;
-			case IBEAM -> CursorTypes.IBEAM;
-			case RESIZE_NESW -> BrowserCursorTypes.RESIZE_NESW;
-			case RESIZE_NWSE -> BrowserCursorTypes.RESIZE_NWSE;
-			case RESIZE_NS -> CursorTypes.RESIZE_NS;
-			case RESIZE_EW -> CursorTypes.RESIZE_EW;
-			case POINTING_HAND -> CursorTypes.POINTING_HAND;
-			case RESIZE_ALL -> CursorTypes.RESIZE_ALL;
-			default -> CursorTypes.ARROW;
-		};
 	}
 
 	@Override
@@ -264,37 +247,37 @@ public final class JcefEmbeddedBrowser extends ComputerPcCefBrowser implements B
 
 	@Override
 	public void mousePressed(int x, int y, int button, int modifiers, boolean doubled) {
-		onMouseClicked(new MouseButtonEvent(x, y, new net.minecraft.client.input.MouseButtonInfo(button, modifiers)), doubled);
+		sendAwtMousePressed(x, y, button, modifiers, doubled);
 	}
 
 	@Override
 	public void mouseReleased(int x, int y, int button, int modifiers) {
-		onMouseReleased(new MouseButtonEvent(x, y, new net.minecraft.client.input.MouseButtonInfo(button, modifiers)));
+		sendAwtMouseReleased(x, y, button, modifiers);
 	}
 
 	@Override
 	public void mouseScrolled(int x, int y, double amount) {
-		onMouseScrolled(x, y, amount);
+		sendAwtMouseScrolled(x, y, amount);
 	}
 
 	@Override
 	public void mouseMoved(int x, int y) {
-		onMouseMoved(x, y);
+		sendAwtMouseMoved(x, y);
 	}
 
 	@Override
 	public void keyPressed(int keyCode, int modifiers) {
-		onKeyPressed(new KeyEvent(keyCode, 0, modifiers));
+		sendAwtKeyPressed(keyCode, modifiers);
 	}
 
 	@Override
 	public void keyReleased(int keyCode, int modifiers) {
-		onKeyReleased(new KeyEvent(keyCode, 0, modifiers));
+		sendAwtKeyReleased(keyCode, modifiers);
 	}
 
 	@Override
 	public void charTyped(int codePoint) {
-		onCharTyped(new CharacterEvent(codePoint));
+		sendAwtCharTyped(codePoint);
 	}
 
 	@Override

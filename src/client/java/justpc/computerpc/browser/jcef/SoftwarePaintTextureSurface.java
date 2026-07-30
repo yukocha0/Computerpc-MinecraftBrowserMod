@@ -1,18 +1,12 @@
 package justpc.computerpc.browser.jcef;
 
-import com.mojang.blaze3d.GpuFormat;
-import com.mojang.blaze3d.opengl.GlConst;
-import com.mojang.blaze3d.opengl.GlStateManager;
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.textures.GpuTexture;
 import justpc.computerpc.browser.api.BrowserFrame;
+import justpc.computerpc.browser.api.BrowserRenderBridge;
 import justpc.computerpc.browser.api.BrowserTexture;
 import justpc.computerpc.browser.api.DirtyRectangle;
-import justpc.computerpc.minecraft.MinecraftExternalTexture;
-import net.minecraft.client.Minecraft;
+import justpc.computerpc.browser.api.ExternalTexture;
 import org.cef.browser.CefBrowser;
 import org.jetbrains.annotations.Nullable;
-import org.lwjgl.opengl.GL12;
 import org.lwjgl.system.MemoryUtil;
 
 import java.awt.Rectangle;
@@ -22,8 +16,9 @@ import java.util.List;
 
 final class SoftwarePaintTextureSurface implements JcefBrowserSurface {
 	private final String debugName;
+	private final BrowserRenderBridge renderBridge;
 	private final Object paintLock = new Object();
-	private @Nullable MinecraftExternalTexture externalTexture;
+	private @Nullable ExternalTexture externalTexture;
 	private @Nullable BrowserTexture browserTexture;
 	private @Nullable BrowserFrame latestFrame;
 	private @Nullable ByteBuffer pendingPaintBuffer;
@@ -36,8 +31,9 @@ final class SoftwarePaintTextureSurface implements JcefBrowserSurface {
 	private boolean pendingPaintReady;
 	private boolean paintUploadScheduled;
 
-	SoftwarePaintTextureSurface(String debugName) {
+	SoftwarePaintTextureSurface(String debugName, BrowserRenderBridge renderBridge) {
 		this.debugName = debugName;
+		this.renderBridge = renderBridge;
 	}
 
 	@Override
@@ -91,7 +87,7 @@ final class SoftwarePaintTextureSurface implements JcefBrowserSurface {
 		}
 
 		if (scheduleUpload) {
-			Minecraft.getInstance().execute(this::flushPendingPaint);
+			renderBridge.executeOnRenderThread(this::flushPendingPaint);
 		}
 	}
 
@@ -157,7 +153,7 @@ final class SoftwarePaintTextureSurface implements JcefBrowserSurface {
 			paintUploadScheduled = scheduleNext;
 		}
 		if (scheduleNext) {
-			Minecraft.getInstance().execute(this::flushPendingPaint);
+			renderBridge.executeOnRenderThread(this::flushPendingPaint);
 		}
 	}
 
@@ -169,16 +165,7 @@ final class SoftwarePaintTextureSurface implements JcefBrowserSurface {
 			if (externalTexture != null) {
 				externalTexture.release();
 			}
-			GpuTexture gpuTexture = RenderSystem.getDevice().createTexture(
-					debugName,
-					GpuTexture.USAGE_COPY_DST | GpuTexture.USAGE_COPY_SRC | GpuTexture.USAGE_TEXTURE_BINDING | GpuTexture.USAGE_RENDER_ATTACHMENT,
-					GpuFormat.RGBA8_UNORM,
-					width,
-					height,
-					1,
-					1
-			);
-			externalTexture = new MinecraftExternalTexture(gpuTexture, RenderSystem.getDevice().createTextureView(gpuTexture));
+			externalTexture = renderBridge.createTexture(debugName, width, height);
 			browserTexture = () -> externalTexture;
 		}
 
@@ -186,22 +173,7 @@ final class SoftwarePaintTextureSurface implements JcefBrowserSurface {
 		uploadView.clear();
 		uploadView.limit(bytes);
 
-		externalTexture.bind();
-		GlStateManager._pixelStore(GlConst.GL_UNPACK_ROW_LENGTH, width);
-		GlStateManager._pixelStore(GlConst.GL_UNPACK_SKIP_PIXELS, 0);
-		GlStateManager._pixelStore(GlConst.GL_UNPACK_SKIP_ROWS, 0);
-		GlStateManager._pixelStore(GlConst.GL_UNPACK_ALIGNMENT, 4);
-		GlStateManager._texSubImage2D(
-				GlConst.GL_TEXTURE_2D,
-				0,
-				0,
-				0,
-				width,
-				height,
-				GL12.GL_BGRA,
-				GlConst.GL_UNSIGNED_BYTE,
-				uploadView
-		);
+		renderBridge.uploadBgra(externalTexture, uploadView, bytes, width, height);
 		latestFrame = new BrowserFrame(externalTexture, width, height, dirtyRectangles);
 	}
 

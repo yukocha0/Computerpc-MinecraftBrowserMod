@@ -2,6 +2,7 @@ package justpc.computerpc.client;
 
 import justpc.computerpc.browser.api.BrowserManager;
 import justpc.computerpc.browser.BrowserBackend;
+import justpc.computerpc.minecraft.MinecraftBrowserRenderBridge;
 import net.minecraft.client.Minecraft;
 
 public final class BrowserBootstrap {
@@ -12,7 +13,7 @@ public final class BrowserBootstrap {
 	}
 
 	public static void initialize() {
-		initialization = BrowserBackend.initialize();
+		initialization = BrowserBackend.initialize(MinecraftBrowserRenderBridge.INSTANCE);
 		status = "Chromium is starting";
 	}
 
