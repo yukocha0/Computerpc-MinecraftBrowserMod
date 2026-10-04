@@ -1,46 +1,60 @@
 package justpc.computerpc.client;
 
-import justpc.computerpc.browser.api.BrowserManager;
-import justpc.computerpc.browser.BrowserBackend;
-import justpc.computerpc.minecraft.MinecraftBrowserRenderBridge;
+import net.dimaskama.mcef.api.MCEFApi;
 import net.minecraft.client.Minecraft;
 
+import java.util.Locale;
+
 public final class BrowserBootstrap {
-	private static volatile String status = "Chromium is starting";
-	private static volatile BrowserManager.Initialization initialization;
+	private static volatile String status = "MCEF Modern is required to start the browser";
+	private static volatile MCEFApi.Initialization initialization;
 
 	private BrowserBootstrap() {
 	}
 
 	public static void initialize() {
-		initialization = BrowserBackend.initialize(MinecraftBrowserRenderBridge.INSTANCE);
+		initialization = MCEFApi.initialize();
 		status = "Chromium is starting";
 	}
 
 	public static void tick(Minecraft client) {
-		BrowserManager.Initialization currentInitialization = initialization;
+		MCEFApi.Initialization currentInitialization = initialization;
 		if (currentInitialization == null) {
+			return;
+		}
+
+		if (currentInitialization.getFuture().isCompletedExceptionally()) {
+			status = "MCEF Modern failed to initialize; check the game log";
 			return;
 		}
 
 		String nextStatus = switch (currentInitialization.getStage()) {
 			case DONE -> "Chromium ready";
-			case DOWNLOADING -> "Chromium is downloading its runtime";
+			case DOWNLOADING -> downloadingStatus(currentInitialization.getPercentage());
 			case EXTRACTING -> "Chromium is extracting its runtime";
 			case INSTALL -> "Chromium is installing its runtime";
 			case INITIALIZING -> "Chromium is initializing";
 			case NOT_STARTED -> "Chromium is starting";
 		};
-		if (!nextStatus.equals(status)) {
-			status = nextStatus;
-		}
+		status = nextStatus;
 	}
 
 	public static boolean isReady() {
-		return initialization != null && initialization.isDone();
+		MCEFApi.Initialization currentInitialization = initialization;
+		return currentInitialization != null
+				&& currentInitialization.isDone()
+				&& currentInitialization.getFuture().isDone()
+				&& !currentInitialization.getFuture().isCompletedExceptionally();
 	}
 
 	public static String getStatus() {
 		return status;
+	}
+
+	private static String downloadingStatus(float percentage) {
+		if (Float.isFinite(percentage) && percentage >= 0.0F && percentage <= 100.0F) {
+			return String.format(Locale.ROOT, "Chromium is downloading its runtime (%.0f%%)", percentage);
+		}
+		return "Chromium is downloading its runtime";
 	}
 }

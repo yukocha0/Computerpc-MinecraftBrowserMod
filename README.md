@@ -9,7 +9,7 @@ This repository contains the public source for the mod, including the Fabric set
 ## Highlights
 
 - Placeable **Display Block** clusters that behave like one larger screen
-- Embedded Chromium browser rendering through JCEF
+- Embedded Chromium browser rendering through [MCEF Modern](https://modrinth.com/mod/mcef-modern)
 - **Browser Remote** UI for scanning and controlling nearby displays
 - Multiple tabs, direct URL entry, back, forward, reload, and home actions
 - Resolution presets that adapt to the selected display aspect ratio
@@ -21,26 +21,27 @@ This repository contains the public source for the mod, including the Fabric set
 ## Requirements
 
 - Minecraft `26.2`
-- Fabric Loader `0.18.5+`
+- Fabric Loader `0.19.3+`
 - Fabric API `0.154.0+26.2`
 - Java `25`
+- [MCEF Modern `0.3.3` for Minecraft 26.2](https://modrinth.com/mod/mcef-modern)
 
-The checked-in Gradle configuration currently targets Minecraft/Fabric version `26.2`. If you want to retarget the mod, update the values in `gradle.properties`.
+The checked-in Gradle configuration currently targets Minecraft/Fabric version `26.2`. The browser library version is configured in `gradle.properties`.
 
 ## Installation
 
 1. Install **Java 25**.
 2. Install **Fabric Loader** for Minecraft `26.2`.
-3. Put **Fabric API** and the **Computer PC** mod jar into your `mods` folder.
+3. Install **Fabric API**, **MCEF Modern for Minecraft 26.2**, and the **Computer PC** mod jar into your `mods` folder.
 4. Launch the game.
 
-For dedicated servers, install the same mod jar on the server and on every connecting client.
+For dedicated servers, install the Computer PC mod and Fabric API on the server and on every connecting client. Install MCEF Modern on clients only; it is a client-side browser library.
 
 ## First Launch
 
-Computer PC bundles its browser integration, so you do not need a separate browser mod.
+Computer PC requires MCEF Modern for its browser integration. Install the matching Minecraft 26.2 release on every client; without it, browser functionality is disabled and the game log explains the missing dependency. MCEF Modern is client-only, so dedicated servers do not need it.
 
-The first launch can take longer because the embedded browser runtime may need to initialize or download runtime files before the displays become active.
+The first launch downloads the embedded browser runtime before displays become active. The in-game status shows download progress when available. If progress remains unchanged, check your internet connection and the game log (`logs/latest.log`) for MCEF initialization errors.
 
 ## In-Game Usage
 

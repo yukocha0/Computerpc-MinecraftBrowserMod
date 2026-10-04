@@ -3,13 +3,17 @@ package justpc.computerpc.client;
 import justpc.computerpc.blockentity.DisplayBlockEntity;
 import justpc.computerpc.browser.BrowserTabData;
 import justpc.computerpc.browser.DisplayStateData;
-import justpc.computerpc.browser.api.BrowserInstance;
 import justpc.computerpc.client.render.BrowserRenderUtil;
 import justpc.computerpc.network.ComputerpcNetworking;
 import justpc.computerpc.network.ComputerpcPayloads;
 import justpc.computerpc.util.DisplayCluster;
-import justpc.computerpc.browser.BrowserBackend;
+import net.dimaskama.mcef.api.MCEFApi;
+import net.dimaskama.mcef.api.MCEFBrowser;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.input.MouseButtonInfo;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
@@ -67,9 +71,6 @@ public final class DisplayBrowserManager {
 				session.suspend();
 			} else {
 				session.resume();
-				DisplayCluster cluster = display.getCluster();
-				session.clusterBlocks = cluster.blocks();
-				session.syncAuthoritative(display.getScreenState().adaptToAspect(cluster.widthBlocks(), cluster.heightBlocks()), tickCounter);
 			}
 
 			if (tickCounter - session.lastAccessTick > 200L) {
@@ -87,32 +88,7 @@ public final class DisplayBrowserManager {
 		SESSIONS.clear();
 	}
 
-	public static void applyRemoteInput(ComputerpcPayloads.BrowserInputS2C payload) {
-		Minecraft client = Minecraft.getInstance();
-		if (client.level == null) {
-			return;
-		}
-
-		DisplayBrowserSession session = getOrCreateSession(client.level, payload.pos());
-		if (session == null) {
-			return;
-		}
-
-		session.applyInput(payload.eventType(), payload.x(), payload.y(), payload.button(), payload.keyCode(), payload.scanCode(), payload.modifiers(), payload.codePoint(), payload.scrollDelta());
-	}
-
 	public static @Nullable DisplayBrowserSession getSession(ClientLevel level, BlockPos rootPos) {
-		return getOrCreateSession(level, rootPos);
-	}
-
-	public static @Nullable DisplayBrowserSession getRenderSession(ClientLevel level, BlockPos rootPos) {
-		DisplayKey key = new DisplayKey(level.dimension(), rootPos);
-		DisplayBrowserSession session = SESSIONS.get(key);
-		if (session != null) {
-			session.lastAccessTick = tickCounter;
-			return session;
-		}
-
 		return getOrCreateSession(level, rootPos);
 	}
 
@@ -244,9 +220,9 @@ public final class DisplayBrowserManager {
 
 	public static final class DisplayBrowserSession {
 		private DisplayKey key;
-		private final List<BrowserInstance> browsers = new ArrayList<>();
-		private final Map<BrowserInstance, String> volumeSyncedUrls = new IdentityHashMap<>();
-		private final Map<BrowserInstance, String> requestedUrls = new IdentityHashMap<>();
+		private final List<MCEFBrowser> browsers = new ArrayList<>();
+		private final Map<MCEFBrowser, String> volumeSyncedUrls = new IdentityHashMap<>();
+		private final Map<MCEFBrowser, String> requestedUrls = new IdentityHashMap<>();
 		private DisplayStateData state = DisplayStateData.DEFAULT;
 		private long lastAccessTick;
 		private Set<BlockPos> clusterBlocks = Set.of();
@@ -262,7 +238,7 @@ public final class DisplayBrowserManager {
 			return state;
 		}
 
-		public @Nullable BrowserInstance activeBrowser() {
+		public @Nullable MCEFBrowser activeBrowser() {
 			if (browsers.isEmpty()) {
 				return null;
 			}
@@ -283,14 +259,20 @@ public final class DisplayBrowserManager {
 			}
 
 			DisplayStateData previousState = this.state;
+			if (previousState.tabs().size() == sanitized.tabs().size() + 1
+					&& browsers.size() == previousState.tabs().size()) {
+				int removedIndex = findRemovedTabIndex(previousState.tabs(), sanitized.tabs());
+				if (removedIndex >= 0) {
+					closeBrowserAt(removedIndex);
+				}
+			}
 			this.state = sanitized;
 			boolean resolutionChanged = previousState.resolutionWidth() != sanitized.resolutionWidth()
 					|| previousState.resolutionHeight() != sanitized.resolutionHeight();
 			boolean volumeChanged = Float.compare(previousState.volume(), sanitized.volume()) != 0;
-			boolean activeTabChanged = previousState.activeTab() != sanitized.activeTab();
 
 			while (browsers.size() > sanitized.tabs().size()) {
-				BrowserInstance browser = browsers.removeLast();
+				MCEFBrowser browser = browsers.removeLast();
 				volumeSyncedUrls.remove(browser);
 				requestedUrls.remove(browser);
 				BrowserRenderUtil.release(browser);
@@ -299,30 +281,29 @@ public final class DisplayBrowserManager {
 
 			for (int i = 0; i < sanitized.tabs().size(); i++) {
 				String url = sanitized.tabs().get(i).currentUrl();
-				BrowserInstance browser;
+				MCEFBrowser browser;
 				boolean created = false;
 				boolean urlChanged = false;
 				if (i >= browsers.size()) {
-					browser = BrowserBackend.getInstance().createBrowser(url, false);
+					browser = MCEFApi.getInstance().createBrowser(url, false);
 					browsers.add(browser);
 					requestedUrls.put(browser, url);
 					created = true;
 				} else {
 					browser = browsers.get(i);
-					String currentUrl = browser.currentUrl();
+					String currentUrl = browser.getCefBrowser().getURL();
 					if (stateChanged
 							&& !url.equals(currentUrl)
 							&& !url.equals(requestedUrls.get(browser))
-							&& shouldApplyNavigation(url, currentUrl, allowDefaultNavigation)) {
-						haltBrowserPage(browser);
-						browser.navigate(url);
+							&& shouldApplyNavigation(url, currentUrl, requestedUrls.get(browser), allowDefaultNavigation)) {
+						browser.getCefBrowser().loadURL(url);
 						requestedUrls.put(browser, url);
 						urlChanged = true;
 					}
 				}
 
 				if (created || resolutionChanged) {
-					browser.renderer().resize(sanitized.resolutionWidth(), sanitized.resolutionHeight());
+					browser.resize(sanitized.resolutionWidth(), sanitized.resolutionHeight());
 				}
 				if (created) {
 					browser.setFocus(false);
@@ -330,20 +311,52 @@ public final class DisplayBrowserManager {
 				if (created || volumeChanged || urlChanged) {
 					volumeSyncedUrls.remove(browser);
 				}
+				if (suspended) {
+					suspendBrowser(browser);
+				}
 			}
 
 			applyActivityPolicy();
-			BrowserInstance activeBrowser = activeBrowser();
-			if (activeTabChanged && activeBrowser != null && activeBrowser.texture() == null) {
-				String targetUrl = sanitized.activeTabData().currentUrl();
-				if (!shouldApplyNavigation(targetUrl, activeBrowser.currentUrl(), allowDefaultNavigation)) {
-					return;
+		}
+
+		private static int findRemovedTabIndex(List<BrowserTabData> previousTabs, List<BrowserTabData> updatedTabs) {
+			int bestIndex = -1;
+			int bestMatches = -1;
+			for (int removedIndex = 0; removedIndex < previousTabs.size(); removedIndex++) {
+				int matches = 0;
+				for (int previousIndex = 0; previousIndex < previousTabs.size(); previousIndex++) {
+					if (previousIndex == removedIndex) {
+						continue;
+					}
+					int updatedIndex = previousIndex < removedIndex ? previousIndex : previousIndex - 1;
+					if (previousTabs.get(previousIndex).equals(updatedTabs.get(updatedIndex))) {
+						matches++;
+					}
 				}
-				haltBrowserPage(activeBrowser);
-				activeBrowser.navigate(targetUrl);
-				requestedUrls.put(activeBrowser, targetUrl);
-				volumeSyncedUrls.remove(activeBrowser);
+				if (matches > bestMatches) {
+					bestIndex = removedIndex;
+					bestMatches = matches;
+				}
 			}
+			return bestIndex;
+		}
+
+		public void removeTab(int index) {
+			if (index < 0 || index >= browsers.size() || index >= state.tabs().size()) {
+				throw new IndexOutOfBoundsException("Tab index is outside the browser session");
+			}
+
+			closeBrowserAt(index);
+			state = state.withRemovedTab(index);
+			applyActivityPolicy();
+		}
+
+		private void closeBrowserAt(int index) {
+			MCEFBrowser browser = browsers.remove(index);
+			volumeSyncedUrls.remove(browser);
+			requestedUrls.remove(browser);
+			BrowserRenderUtil.release(browser);
+			browser.close();
 		}
 
 		public void syncPreview(DisplayStateData newState, long currentTick) {
@@ -368,15 +381,25 @@ public final class DisplayBrowserManager {
 			sync(sanitized);
 		}
 
-		private static boolean shouldApplyNavigation(String targetUrl, String currentUrl, boolean allowDefaultNavigation) {
+		private static boolean shouldApplyNavigation(
+				String targetUrl,
+				@Nullable String currentUrl,
+				@Nullable String requestedUrl,
+				boolean allowDefaultNavigation
+		) {
 			if (allowDefaultNavigation || !BrowserTabData.defaultUrl().equals(targetUrl)) {
 				return true;
+			}
+			if (requestedUrl != null
+					&& !BrowserTabData.defaultUrl().equals(requestedUrl)
+					&& (currentUrl == null || currentUrl.isBlank() || BrowserTabData.defaultUrl().equals(currentUrl))) {
+				return false;
 			}
 			return currentUrl == null || currentUrl.isBlank() || BrowserTabData.defaultUrl().equals(currentUrl);
 		}
 
 		public void close() {
-			for (BrowserInstance browser : browsers) {
+			for (MCEFBrowser browser : browsers) {
 				BrowserRenderUtil.release(browser);
 				suspendBrowser(browser);
 				browser.close();
@@ -403,7 +426,7 @@ public final class DisplayBrowserManager {
 			return false;
 		}
 
-		public boolean containsBrowser(BrowserInstance browser) {
+		public boolean containsBrowser(MCEFBrowser browser) {
 			return browsers.contains(browser);
 		}
 
@@ -413,7 +436,7 @@ public final class DisplayBrowserManager {
 			}
 
 			suspended = true;
-			for (BrowserInstance browser : browsers) {
+			for (MCEFBrowser browser : browsers) {
 				suspendBrowser(browser);
 			}
 		}
@@ -432,9 +455,9 @@ public final class DisplayBrowserManager {
 				return;
 			}
 
-			for (BrowserInstance browser : browsers) {
-				String currentUrl = browser.currentUrl();
-				if (browser.isLoading() || Objects.equals(volumeSyncedUrls.get(browser), currentUrl)) {
+			for (MCEFBrowser browser : browsers) {
+				String currentUrl = browser.getCefBrowser().getURL();
+				if (browser.getCefBrowser().isLoading() || Objects.equals(volumeSyncedUrls.get(browser), currentUrl)) {
 					continue;
 				}
 
@@ -446,70 +469,59 @@ public final class DisplayBrowserManager {
 			}
 		}
 
-		private void applyActivityPolicy() {
-			if (suspended) {
-				for (BrowserInstance browser : browsers) {
-					suspendBrowser(browser);
-				}
-				return;
-			}
-
-			BrowserInstance activeBrowser = activeBrowser();
-			for (BrowserInstance browser : browsers) {
-				if (browser == activeBrowser) {
-					browser.setVisible(true);
-					applyVolume(browser, state.volume());
-					continue;
-				}
-
-				suspendBrowser(browser);
-			}
-		}
-
 		public void applyInput(int eventType, int x, int y, int button, int keyCode, int scanCode, int modifiers, int codePoint, double scrollDelta) {
-			BrowserInstance browser = activeBrowser();
+			MCEFBrowser browser = activeBrowser();
 			if (browser == null) {
 				return;
 			}
 
 			switch (eventType) {
-				case ComputerpcNetworking.EVENT_MOUSE_MOVE -> browser.input().mouseMoved(x, y);
-				case ComputerpcNetworking.EVENT_MOUSE_PRESS -> browser.input().mousePressed(x, y, button, modifiers, false);
-				case ComputerpcNetworking.EVENT_MOUSE_RELEASE -> browser.input().mouseReleased(x, y, button, modifiers);
-				case ComputerpcNetworking.EVENT_MOUSE_SCROLL -> browser.input().mouseScrolled(x, y, scrollDelta);
-				case ComputerpcNetworking.EVENT_KEY_PRESS -> browser.input().keyPressed(keyCode, modifiers);
-				case ComputerpcNetworking.EVENT_KEY_RELEASE -> browser.input().keyReleased(keyCode, modifiers);
-				case ComputerpcNetworking.EVENT_CHAR_TYPED -> browser.input().charTyped(codePoint);
+				case ComputerpcNetworking.EVENT_MOUSE_MOVE -> browser.onMouseMoved(x, y);
+				case ComputerpcNetworking.EVENT_MOUSE_PRESS -> browser.onMouseClicked(new MouseButtonEvent(x, y, new MouseButtonInfo(button, modifiers)), false);
+				case ComputerpcNetworking.EVENT_MOUSE_RELEASE -> browser.onMouseReleased(new MouseButtonEvent(x, y, new MouseButtonInfo(button, modifiers)));
+				case ComputerpcNetworking.EVENT_MOUSE_SCROLL -> browser.onMouseScrolled(x, y, scrollDelta);
+				case ComputerpcNetworking.EVENT_KEY_PRESS -> browser.onKeyPressed(new KeyEvent(keyCode, scanCode, modifiers));
+				case ComputerpcNetworking.EVENT_KEY_RELEASE -> browser.onKeyReleased(new KeyEvent(keyCode, scanCode, modifiers));
+				case ComputerpcNetworking.EVENT_CHAR_TYPED -> browser.onCharTyped(new CharacterEvent(codePoint));
 				default -> {
 				}
 			}
 		}
 
 		public String currentUrl() {
-			BrowserInstance browser = activeBrowser();
+			MCEFBrowser browser = activeBrowser();
 			String authoritativeUrl = state.activeTabData().currentUrl();
 			if (browser == null) {
 				return authoritativeUrl;
 			}
 
-			String currentUrl = browser.currentUrl();
+			String currentUrl = browser.getCefBrowser().getURL();
 			String requestedUrl = requestedUrls.get(browser);
-			if (requestedUrl != null
-					&& !BrowserTabData.defaultUrl().equals(requestedUrl)
-					&& (browser.isLoading() || currentUrl == null || currentUrl.isBlank() || BrowserTabData.defaultUrl().equals(currentUrl))) {
-				return requestedUrl;
+			if (requestedUrl != null) {
+				if (BrowserTabData.defaultUrl().equals(requestedUrl)
+						&& !BrowserTabData.defaultUrl().equals(currentUrl)) {
+					return requestedUrl;
+				}
+				if (!BrowserTabData.defaultUrl().equals(requestedUrl)
+						&& (browser.getCefBrowser().isLoading()
+						|| currentUrl == null
+						|| currentUrl.isBlank()
+						|| BrowserTabData.defaultUrl().equals(currentUrl))) {
+					return requestedUrl;
+				}
 			}
 			if (currentUrl == null || currentUrl.isBlank()) {
 				return authoritativeUrl;
 			}
-			if (BrowserTabData.defaultUrl().equals(currentUrl)
+			if (browser.getCefBrowser().isLoading()
+					&& BrowserTabData.defaultUrl().equals(currentUrl)
 					&& !BrowserTabData.defaultUrl().equals(authoritativeUrl)) {
 				return authoritativeUrl;
 			}
 			return currentUrl;
 		}
 
-		private static void applyVolume(BrowserInstance browser, float volume) {
+		private static void applyVolume(MCEFBrowser browser, float volume) {
 			String normalizedVolume = Float.toString(Mth.clamp(volume, 0.0F, 1.0F));
 			String script = """
 					(() => {
@@ -571,18 +583,26 @@ public final class DisplayBrowserManager {
 					  }
 					})();
 					""".formatted(normalizedVolume);
-			browser.executeJavaScript(script);
+			String url = browser.getCefBrowser().getURL();
+			browser.getCefBrowser().executeJavaScript(script, url == null ? "about:blank" : url, 0);
 		}
 
-		private static void suspendBrowser(BrowserInstance browser) {
+		private void applyActivityPolicy() {
+			MCEFBrowser activeBrowser = activeBrowser();
+			for (MCEFBrowser browser : browsers) {
+				if (!suspended && browser == activeBrowser) {
+					browser.setFocus(false);
+					applyVolume(browser, state.volume());
+				} else {
+					suspendBrowser(browser);
+				}
+			}
+		}
+
+		private static void suspendBrowser(MCEFBrowser browser) {
 			browser.setFocus(false);
-			browser.setVisible(false);
-			haltBrowserPage(browser);
-		}
-
-		private static void haltBrowserPage(BrowserInstance browser) {
-			browser.stop();
-			browser.executeJavaScript("""
+			String url = browser.getCefBrowser().getURL();
+			browser.getCefBrowser().executeJavaScript("""
 					(() => {
 					  document.querySelectorAll('video, audio').forEach((element) => {
 					    try {
@@ -590,12 +610,8 @@ public final class DisplayBrowserManager {
 					    } catch (ignored) {
 					    }
 					  });
-					  try {
-					    window.stop();
-					  } catch (ignored) {
-					  }
 					})();
-					""");
+					""", url == null ? "about:blank" : url, 0);
 		}
 	}
 

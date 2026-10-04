@@ -1,0 +1,11 @@
+{
+	"required": false,
+	"package": "justpc.computerpc.mixin.client",
+	"compatibilityLevel": "JAVA_21",
+	"client": [
+		"McefBrowserTextureMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}

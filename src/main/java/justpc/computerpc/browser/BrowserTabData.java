@@ -4,6 +4,8 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
 import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -106,7 +108,7 @@ public record BrowserTabData(String title, List<String> history, int historyInde
 			return "https://" + trimmed;
 		}
 
-		return SEARCH_URL_PREFIX + trimmed.replace(" ", "+");
+		return SEARCH_URL_PREFIX + URLEncoder.encode(trimmed, StandardCharsets.UTF_8);
 	}
 
 	public static String titleFromUrl(String url) {

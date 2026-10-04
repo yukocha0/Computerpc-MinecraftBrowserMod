@@ -18,7 +18,7 @@ public record DisplayStateData(List<BrowserTabData> tabs, int activeTab, int res
 			Codec.FLOAT.fieldOf("volume").forGetter(DisplayStateData::volume)
 	).apply(instance, DisplayStateData::new));
 
-	public static final DisplayStateData DEFAULT = new DisplayStateData(DEFAULT_TABS, 0, 640, 360, 1.0f);
+	public static final DisplayStateData DEFAULT = new DisplayStateData(DEFAULT_TABS, 0, 960, 540, 1.0f);
 
 	public DisplayStateData {
 		tabs = List.copyOf(tabs);
@@ -48,7 +48,7 @@ public record DisplayStateData(List<BrowserTabData> tabs, int activeTab, int res
 		int safeActive = Math.max(0, Math.min(activeTab, cleanedTabs.size() - 1));
 		int safeWidth = Math.max(1, Math.min(resolutionWidth, 3840));
 		int safeHeight = Math.max(1, Math.min(resolutionHeight, 2160));
-		float safeVolume = Math.max(0.0f, Math.min(volume, 1.0f));
+		float safeVolume = Float.isFinite(volume) ? Math.max(0.0f, Math.min(volume, 1.0f)) : DEFAULT.volume();
 		if (cleanedTabs == tabs
 				&& safeActive == activeTab
 				&& safeWidth == resolutionWidth

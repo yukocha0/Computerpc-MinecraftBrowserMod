@@ -10,6 +10,7 @@ import justpc.computerpc.network.ComputerpcPayloads;
 import net.fabricmc.fabric.api.client.rendering.v1.BlockEntityRendererRegistry;
 import justpc.computerpc.registry.ComputerpcBlockEntities;
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
@@ -22,11 +23,14 @@ import net.minecraft.world.phys.BlockHitResult;
 public final class ComputerpcClient implements ClientModInitializer {
 	@Override
 	public void onInitializeClient() {
+		if (!FabricLoader.getInstance().isModLoaded("mcef-modern")) {
+			throw new IllegalStateException(
+					"Computer PC requires MCEF Modern to run. Install the matching version from https://modrinth.com/mod/mcef-modern."
+			);
+		}
+
 		BrowserBootstrap.initialize();
 		BlockEntityRendererRegistry.register(ComputerpcBlockEntities.DISPLAY, DisplayBlockEntityRenderer::new);
-
-		ClientPlayNetworking.registerGlobalReceiver(ComputerpcPayloads.BrowserInputS2C.TYPE, (payload, context) ->
-				context.client().execute(() -> DisplayBrowserManager.applyRemoteInput(payload)));
 
 		UseItemCallback.EVENT.register((player, level, hand) -> {
 			if (!(player.getItemInHand(hand).getItem() instanceof RemoteItem)) {
